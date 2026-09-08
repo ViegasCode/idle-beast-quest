@@ -74,7 +74,7 @@ function Combate() {
   }, [state, mostrouResumo]);
 
   const capturaMutation = useMutation({
-    mutationFn: (item_id?: number) => capturar({ data: { item_id } }),
+    mutationFn: (item_id?: number | undefined) => capturar({ data: { item_id } }),
     onSuccess: async (res) => {
       await queryClient.invalidateQueries();
       if (res.sucesso) toast.success(`Capturada com ${res.item}!`);

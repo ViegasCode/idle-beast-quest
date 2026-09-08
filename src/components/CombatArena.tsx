@@ -47,7 +47,7 @@ function Lado({
   cor: string;
   atacando: boolean;
   dano: number | null;
-  shiny?: boolean;
+  shiny?: boolean | undefined;
 }) {
   return (
     <div className="flex-1">

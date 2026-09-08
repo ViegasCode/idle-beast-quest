@@ -314,7 +314,7 @@ export const getCombatState = createServerFn({ method: "POST" })
 
 export const tentarCaptura = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { item_id?: number } | undefined) => ({
+  .inputValidator((data: { item_id?: number | undefined } | undefined) => ({
     item_id: data?.item_id ? Number(data.item_id) : null,
   }))
   .handler(async ({ data, context }) => {

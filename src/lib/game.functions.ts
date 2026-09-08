@@ -193,8 +193,17 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
 
       faseKills++;
       if (faseKills >= INIMIGOS_POR_FASE) {
-        faseKills = 0;
-        fase = fase >= fasesTotal ? 1 : fase + 1;
+        // If player has enabled repeat phase, keep the same phase and reset kills
+        if (profile?.repetir_fase) {
+          faseKills = 0;
+          // if profile specifies a phase to repeat, respect it
+          if (profile.fase_repetir && typeof profile.fase_repetir === 'number') {
+            fase = profile.fase_repetir;
+          }
+        } else {
+          faseKills = 0;
+          fase = fase >= fasesTotal ? 1 : fase + 1;
+        }
       }
     }
   }
@@ -314,6 +323,33 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
 export const getCombatState = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => resolver(context as SupabaseCtx));
+
+export const setSelectedPhase = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { fase: number }) => ({ fase: Number(data.fase) }))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as SupabaseCtx;
+    if (!data || typeof data.fase !== 'number' || Number.isNaN(data.fase)) throw new Error('Fase inválida');
+    const { error } = await supabase
+      .from('hunting_sessions')
+      .update({ fase: data.fase, fase_kills: 0, ultima_resolucao_em: new Date().toISOString() })
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
+    return { ok: true, fase: data.fase };
+  });
+
+export const setRepeatPhase = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { ativo: boolean; fase?: number | null }) => ({ ativo: Boolean(data.ativo), fase: data.fase ? Number(data.fase) : null }))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as SupabaseCtx;
+    const updates: any = { repetir_fase: data.ativo };
+    if (data.ativo && typeof data.fase === 'number') updates.fase_repetir = data.fase;
+    if (!data.ativo) updates.fase_repetir = null;
+    const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
+    if (error) throw new Error(error.message);
+    return { ok: true, ativo: data.ativo, fase: data.fase ?? null };
+  });
 
 /* ---------------------- Captura manual ---------------------- */
 

@@ -137,7 +137,7 @@ export function CombatArena({ jogador, fila, indiceInicial }: Props) {
         );
         setHpJ(
           res.vitoria
-            ? Math.min(jogador.hpMax, res.hpJogadorFinal + Math.ceil(jogador.hpMax * 0.25))
+            ? Math.min(jogador.hpMax, res.hpJogadorFinal + Math.ceil(jogador.hpMax * 0.4))
             : jogador.hpMax,
         );
         setTurno(null);

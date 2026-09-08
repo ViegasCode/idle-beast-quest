@@ -258,6 +258,9 @@ export function inimigosDaFase(
       species: s,
     });
     comb.nome = s.nome;
+    // inimigos selvagens são um pouco mais fracos que criaturas treinadas
+    comb.ataque = Math.max(1, Math.round(comb.ataque * 0.72));
+    comb.defesa = Math.max(1, Math.round(comb.defesa * 0.85));
     lista.push({
       index: i,
       species_id: s.id,
@@ -400,7 +403,7 @@ export function sortearRaridade(mult: number, rng: () => number): Rarity {
   return "Comum";
 }
 
-/** Regeneração entre batalhas: 25% do HP máximo por batalha. */
+/** Regeneração entre batalhas: 40% do HP máximo por batalha. */
 export function regenerar(hp: number, hpMax: number) {
-  return Math.min(hpMax, hp + Math.ceil(hpMax * 0.25));
+  return Math.min(hpMax, hp + Math.ceil(hpMax * 0.4));
 }

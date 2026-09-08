@@ -3,39 +3,57 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { changeRegion, collectHunt, getGameState } from "@/lib/game.functions";
+import {
+  changeRegion,
+  coletarResumo,
+  getCombatState,
+  setAutoCaptura,
+  tentarCaptura,
+} from "@/lib/game.functions";
 import { CreatureCard, type CreatureRow } from "@/components/CreatureCard";
+import { CombatArena } from "@/components/CombatArena";
 import { GameNav } from "@/components/GameNav";
-import { MAX_HOURS, MAX_MS, TICK_MINUTES, formatDuration, rarityClass } from "@/lib/game";
+import { formatDuration, rarityClass } from "@/lib/game";
+import { CAP_HORAS, INIMIGOS_POR_FASE, type Combatente, type Inimigo } from "@/lib/combat";
 
 export const Route = createFileRoute("/_authenticated/cacando")({
   head: () => ({
     meta: [
-      { title: "Caçando · Achnuba" },
-      { name: "description", content: "Acompanhe a caça da sua criatura ativa e colete as capturas acumuladas." },
-      { property: "og:title", content: "Caçando · Achnuba" },
-      { property: "og:description", content: "Progresso idle acumulado, até 12 horas por coleta." },
+      { title: "Combate · Achnuba" },
+      {
+        name: "description",
+        content:
+          "Combate PvE idle automático: sua criatura enfrenta inimigos por fases, ganha exp, itens de captura e novas criaturas.",
+      },
+      { property: "og:title", content: "Combate · Achnuba" },
+      {
+        property: "og:description",
+        content: "Auto-batalhas visíveis por fases, com progresso offline de até 12 horas.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Cacando,
+  component: Combate,
 });
 
-function Cacando() {
+function Combate() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const fetchState = useServerFn(getGameState);
-  const coletar = useServerFn(collectHunt);
+  const resolver = useServerFn(getCombatState);
+  const capturar = useServerFn(tentarCaptura);
+  const alternarAuto = useServerFn(setAutoCaptura);
+  const coletar = useServerFn(coletarResumo);
   const trocarRegiao = useServerFn(changeRegion);
 
   const [agora, setAgora] = useState(() => Date.now());
-  const [novas, setNovas] = useState<CreatureRow[]>([]);
+  const [resumoOffline, setResumoOffline] = useState<any>(null);
+  const [mostrouResumo, setMostrouResumo] = useState(false);
 
   const { data: state, isPending } = useQuery({
-    queryKey: ["gameState"],
-    queryFn: () => fetchState(),
-    refetchInterval: 60_000,
+    queryKey: ["combatState"],
+    queryFn: () => resolver(),
+    refetchInterval: 20_000,
   });
 
   useEffect(() => {
@@ -49,21 +67,36 @@ function Cacando() {
     }
   }, [state, isPending, navigate]);
 
+  useEffect(() => {
+    if (mostrouResumo || !state?.resumo) return;
+    if (state.resumo.segundos > 180 && state.resumo.batalhas > 0) setResumoOffline(state.resumo);
+    setMostrouResumo(true);
+  }, [state, mostrouResumo]);
+
+  const capturaMutation = useMutation({
+    mutationFn: (item_id?: number | undefined) => capturar({ data: { item_id } }),
+    onSuccess: async (res) => {
+      await queryClient.invalidateQueries();
+      if (res.sucesso) toast.success(`Capturada com ${res.item}!`);
+      else toast.error(`${res.item} usada, mas a criatura escapou.`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const autoMutation = useMutation({
+    mutationFn: (ativo: boolean) => alternarAuto({ data: { ativo } }),
+    onSuccess: async (res) => {
+      await queryClient.invalidateQueries({ queryKey: ["combatState"] });
+      toast.success(res.ativo ? "Captura automática ativada." : "Captura automática desativada.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const coletaMutation = useMutation({
     mutationFn: () => coletar(),
-    onSuccess: async (res) => {
-      const capturadas = (res.capturadas ?? []) as unknown as CreatureRow[];
-      setNovas(capturadas);
-      await queryClient.invalidateQueries();
-      if (capturadas.length === 0) {
-        toast.info(
-          res.ticks === 0
-            ? `Ainda sem ciclos completos. Cada captura é sorteada a cada ${TICK_MINUTES} min.`
-            : "Sua criatura voltou de mãos vazias desta vez.",
-        );
-      } else {
-        toast.success(`${capturadas.length} nova(s) criatura(s) capturada(s)!`);
-      }
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["combatState"] });
+      toast.success("Resumo coletado. Contadores reiniciados.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -71,91 +104,198 @@ function Cacando() {
   const regiaoMutation = useMutation({
     mutationFn: (region_id: number) => trocarRegiao({ data: { region_id } }),
     onSuccess: async () => {
-      setNovas([]);
-      await queryClient.invalidateQueries({ queryKey: ["gameState"] });
-      toast.success("Região alterada. A caça reiniciou aqui.");
+      await queryClient.invalidateQueries({ queryKey: ["combatState"] });
+      toast.success("Região alterada. Você volta para a Fase 1.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const session = state?.session;
-  const criaturaAtiva = session?.creatures as unknown as CreatureRow | undefined;
-  const regiaoAtual = session?.regions;
+  const session = state?.session as any;
+  const regiao = session?.regions;
+  const criatura = state?.criatura as unknown as CreatureRow | undefined;
+  const jogador = state?.combatente as Combatente | undefined;
+  const fila = (state?.inimigos ?? []) as Inimigo[];
+  const catalogo = state?.catalogo ?? [];
+  const inventario = state?.inventario ?? [];
+  const pending = state?.pending as any;
 
-  const acumuladoBruto = session ? agora - new Date(session.ultima_coleta_em).getTime() : 0;
-  const acumulado = Math.min(Math.max(acumuladoBruto, 0), MAX_MS);
-  const ciclos = Math.floor(acumulado / (TICK_MINUTES * 60 * 1000));
-  const pct = Math.min(100, (acumulado / MAX_MS) * 100);
-  const noLimite = acumuladoBruto >= MAX_MS;
+  const desdeColeta = session ? agora - new Date(session.ultima_coleta_em).getTime() : 0;
+  const horas = Math.max(desdeColeta / 3_600_000, 1 / 60);
+  const killsHora = session ? Math.round((session.kills_total ?? 0) / horas) : 0;
+  const pressao = Number(session?.pressao ?? 0);
+  const statusCombate =
+    pressao >= 0.6 ? "Sob pressão" : pressao >= 0.3 ? "Combate equilibrado" : "Dominando";
+  const totalItens = inventario.reduce((s: number, i: any) => s + i.quantidade, 0);
+  const restaPending = pending ? new Date(pending.expira_em).getTime() - agora : 0;
 
   return (
     <>
       <GameNav treinador={state?.profile?.nome_treinador} total={state?.totalCriaturas} />
       <main className="mx-auto max-w-5xl px-4 py-6">
-        {isPending || !session ? (
-          <p className="text-sm text-muted-foreground">Carregando caçada...</p>
+        {isPending || !session || !jogador ? (
+          <p className="text-sm text-muted-foreground">Entrando em combate...</p>
         ) : (
           <>
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <section className="panel grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Abates/hora</p>
+                <p className="font-display text-xl font-extrabold tabular-nums">{killsHora}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Status</p>
+                <p
+                  className={`text-sm font-bold ${
+                    pressao >= 0.6 ? "text-destructive" : pressao >= 0.3 ? "text-accent" : "text-primary"
+                  }`}
+                >
+                  {statusCombate}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Desde a última coleta
+                </p>
+                <p className="text-sm font-bold tabular-nums">{formatDuration(desdeColeta)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Ganhos</p>
+                <p className="text-sm font-bold tabular-nums">
+                  +{Number(session.exp_total ?? 0).toLocaleString("pt-BR")} exp ·{" "}
+                  {session.kills_total ?? 0} kills
+                </p>
+              </div>
+            </section>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
               <section className="panel p-5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-primary">
-                      Caçando em
+                      {regiao?.nome}
                     </p>
-                    <h1 className="text-2xl font-extrabold">{regiaoAtual?.nome}</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">{regiaoAtual?.descricao}</p>
+                    <h1 className="text-2xl font-extrabold">
+                      Fase {session.fase}/{regiao?.fases ?? 8}
+                    </h1>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {session.fase_kills}/{INIMIGOS_POR_FASE} inimigos derrotados nesta fase
+                    </p>
                   </div>
                   <span className="rounded-full border border-border px-3 py-1 text-xs font-semibold">
-                    Nv. {regiaoAtual?.nivel_minimo}–{regiaoAtual?.nivel_maximo}
+                    Nv. {regiao?.nivel_minimo}–{regiao?.nivel_maximo}
                   </span>
                 </div>
-
-                <div className="mt-6">
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Tempo acumulado</p>
-                      <p className="font-display text-3xl font-extrabold tabular-nums">
-                        {formatDuration(acumulado)}
-                      </p>
-                    </div>
-                    <p className="text-right text-xs text-muted-foreground">
-                      {ciclos} ciclo{ciclos === 1 ? "" : "s"} de {TICK_MINUTES} min
-                      <br />
-                      limite de {MAX_HOURS}h
-                    </p>
-                  </div>
-                  <div className="mt-3 h-3 overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-[width] duration-1000"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  {noLimite && (
-                    <p className="mt-2 text-xs font-semibold text-accent">
-                      Limite de {MAX_HOURS}h atingido — colete para não desperdiçar tempo.
-                    </p>
-                  )}
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-[width]"
+                    style={{ width: `${((session.fase_kills ?? 0) / INIMIGOS_POR_FASE) * 100}%` }}
+                  />
                 </div>
+
+                <div className="mt-5">
+                  <CombatArena
+                    jogador={jogador}
+                    fila={fila}
+                    indiceInicial={session.fase_kills ?? 0}
+                  />
+                </div>
+
+                {pending && restaPending > 0 && (
+                  <div className="mt-5 rounded-2xl border border-accent/60 bg-accent/10 p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-accent">
+                      Criatura capturável
+                    </p>
+                    <div className="mt-2 flex items-center gap-3">
+                      {pending.species?.sprite_url ? (
+                        <img src={pending.species.sprite_url} alt={pending.species.nome} className="size-12" />
+                      ) : null}
+                      <div className="flex-1">
+                        <p className="font-bold">
+                          {pending.species?.nome ?? "Criatura"} · Nv. {pending.nivel}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Fugindo em {Math.ceil(restaPending / 1000)}s
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => capturaMutation.mutate(undefined)}
+                        disabled={capturaMutation.isPending || totalItens === 0}
+                        className="rounded-xl bg-accent px-4 py-2 text-xs font-extrabold uppercase text-accent-foreground disabled:opacity-50"
+                      >
+                        {totalItens === 0 ? "Sem itens" : "Capturar"}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <button
                   onClick={() => coletaMutation.mutate()}
                   disabled={coletaMutation.isPending}
-                  className="mt-6 w-full rounded-xl bg-primary px-5 py-4 text-sm font-extrabold uppercase tracking-wide text-primary-foreground transition hover:brightness-110 disabled:opacity-60"
+                  className="mt-5 w-full rounded-xl border border-border px-5 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground transition hover:text-foreground disabled:opacity-60"
                 >
-                  {coletaMutation.isPending ? "Coletando..." : "Coletar capturas"}
+                  Coletar resumo e zerar contadores
                 </button>
                 <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                  O cálculo acontece no servidor, com base no tempo real desde a última coleta.
+                  Todo o combate é calculado no servidor pelo tempo real decorrido — até {CAP_HORAS}h
+                  com a aba fechada.
                 </p>
               </section>
 
               <aside className="space-y-4">
+                <div className="panel p-4">
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    Inventário de captura
+                  </h2>
+                  <div className="mt-3 space-y-2">
+                    {catalogo.map((item: any) => {
+                      const qtd = inventario.find((i: any) => i.item_id === item.id)?.quantidade ?? 0;
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center gap-3 rounded-xl border border-border bg-surface-2/60 px-3 py-2"
+                        >
+                          <span
+                            className="size-4 shrink-0 rounded-full"
+                            style={{ background: item.cor }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-bold">{item.nome}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {Math.round(Number(item.taxa_sucesso) * 100)}% de captura ·{" "}
+                              {Math.round(Number(item.chance_drop) * 100)}% de drop
+                            </p>
+                          </div>
+                          <span className="font-display text-lg font-extrabold tabular-nums">{qtd}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="panel p-4">
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    Configurações
+                  </h2>
+                  <label className="mt-3 flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(state?.profile?.auto_captura)}
+                      onChange={(e) => autoMutation.mutate(e.target.checked)}
+                      className="mt-0.5 size-4 accent-primary"
+                    />
+                    <span className="text-xs">
+                      Usar item de captura automaticamente ao encontrar criatura capturável
+                      <span className="mt-1 block text-[10px] text-muted-foreground">
+                        Usa o melhor item disponível. Desligado, aparece o botão “Capturar”.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
                 <div>
                   <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Criatura ativa
                   </h2>
-                  {criaturaAtiva ? <CreatureCard creature={criaturaAtiva} /> : null}
+                  {criatura ? <CreatureCard creature={criatura} /> : null}
                 </div>
 
                 <div className="panel p-4">
@@ -163,8 +303,8 @@ function Cacando() {
                     Regiões
                   </h2>
                   <div className="mt-3 space-y-2">
-                    {(state?.regions ?? []).map((r) => {
-                      const ativa = r.id === regiaoAtual?.id;
+                    {(state?.regions ?? []).map((r: any) => {
+                      const ativa = r.id === regiao?.id;
                       return (
                         <button
                           key={r.id}
@@ -178,34 +318,94 @@ function Cacando() {
                         >
                           <span className="block font-bold text-foreground">{r.nome}</span>
                           <span className="text-muted-foreground">
-                            Nv. {r.nivel_minimo}–{r.nivel_maximo} · raridade ×
+                            Nv. {r.nivel_minimo}–{r.nivel_maximo} · {r.fases} fases · raridade ×
                             {Number(r.multiplicador_raridade)}
                           </span>
                         </button>
                       );
                     })}
                   </div>
-                  <p className="mt-3 text-[11px] text-muted-foreground">
-                    Trocar de região reinicia o tempo acumulado.
-                  </p>
                 </div>
               </aside>
             </div>
 
-            {novas.length > 0 && (
-              <section className="mt-8">
-                <h2 className="text-lg font-extrabold">
-                  Última coleta ·{" "}
-                  <span className={`rarity-chip rounded-full px-2 py-0.5 text-xs ${rarityClass("Raro")}`}>
-                    {novas.length} capturada(s)
-                  </span>
-                </h2>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {novas.map((c) => (
-                    <CreatureCard key={c.id} creature={c} />
-                  ))}
+            {resumoOffline && (
+              <div className="fixed inset-0 z-40 grid place-items-center bg-background/80 p-4 backdrop-blur">
+                <div className="panel max-h-[85vh] w-full max-w-lg overflow-y-auto p-6">
+                  <h2 className="font-display text-xl font-extrabold">Enquanto você esteve fora</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formatDuration(resumoOffline.segundos * 1000)} de combate simulado
+                    {resumoOffline.tempoPerdidoMs > 0
+                      ? ` · limite de ${CAP_HORAS}h atingido, tempo extra não contou`
+                      : ""}
+                  </p>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <p>
+                      <span className="font-bold">{resumoOffline.batalhas}</span> combates
+                    </p>
+                    <p>
+                      <span className="font-bold">{resumoOffline.kills}</span> abates
+                    </p>
+                    <p>
+                      <span className="font-bold">
+                        +{Number(resumoOffline.exp).toLocaleString("pt-BR")}
+                      </span>{" "}
+                      exp
+                    </p>
+                    <p>
+                      <span className="font-bold">{resumoOffline.derrotas}</span> recuos
+                    </p>
+                  </div>
+                  <div className="mt-4 text-xs text-muted-foreground">
+                    <p className="font-bold text-foreground">Itens de captura ganhos</p>
+                    {resumoOffline.itens.length ? (
+                      <ul className="mt-1 space-y-0.5">
+                        {resumoOffline.itens.map((i: any) => (
+                          <li key={i.item_id}>
+                            +{i.qtd} {i.nome}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-1">Nenhum item dropou nesse período.</p>
+                    )}
+                    {resumoOffline.capturasFalhadas > 0 && (
+                      <p className="mt-2">
+                        {resumoOffline.capturasFalhadas} tentativa(s) de captura falharam.
+                      </p>
+                    )}
+                    {resumoOffline.perdidasSemItem > 0 && (
+                      <p className="mt-1 text-destructive">
+                        {resumoOffline.perdidasSemItem} criatura(s) capturável(is) perdida(s) por falta
+                        de item.
+                      </p>
+                    )}
+                  </div>
+
+                  {resumoOffline.capturadas.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        Capturadas automaticamente ·{" "}
+                        <span className={`rarity-chip rounded-full px-2 py-0.5 ${rarityClass("Raro")}`}>
+                          {resumoOffline.capturadas.length}
+                        </span>
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        {resumoOffline.capturadas.map((c: CreatureRow) => (
+                          <CreatureCard key={c.id} creature={c} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => setResumoOffline(null)}
+                    className="mt-5 w-full rounded-xl bg-primary px-5 py-3 text-sm font-extrabold uppercase text-primary-foreground"
+                  >
+                    Voltar ao combate
+                  </button>
                 </div>
-              </section>
+              </div>
             )}
           </>
         )}

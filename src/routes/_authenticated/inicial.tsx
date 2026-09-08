@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { chooseStarter, createProfile, getGameState, getStarters } from "@/lib/game.functions";
+import { chooseStarter, createProfile, getCombatState, getStarters } from "@/lib/game.functions";
 
 export const Route = createFileRoute("/_authenticated/inicial")({
   head: () => ({
@@ -22,14 +22,14 @@ export const Route = createFileRoute("/_authenticated/inicial")({
 function Inicial() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const fetchState = useServerFn(getGameState);
+  const fetchState = useServerFn(getCombatState);
   const fetchStarters = useServerFn(getStarters);
   const salvarPerfil = useServerFn(createProfile);
   const escolher = useServerFn(chooseStarter);
 
   const [nome, setNome] = useState("");
 
-  const { data: state } = useQuery({ queryKey: ["gameState"], queryFn: () => fetchState() });
+  const { data: state } = useQuery({ queryKey: ["combatState"], queryFn: () => fetchState() });
   const { data: starters } = useQuery({ queryKey: ["starters"], queryFn: () => fetchStarters() });
 
   useEffect(() => {
@@ -38,7 +38,7 @@ function Inicial() {
 
   const perfilMutation = useMutation({
     mutationFn: (nome_treinador: string) => salvarPerfil({ data: { nome_treinador } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gameState"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["combatState"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 

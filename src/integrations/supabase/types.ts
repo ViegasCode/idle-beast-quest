@@ -14,9 +14,40 @@ export type Database = {
   }
   public: {
     Tables: {
+      capture_items: {
+        Row: {
+          chance_drop: number
+          cor: string
+          created_at: string
+          id: number
+          nome: string
+          taxa_sucesso: number
+          tier: number
+        }
+        Insert: {
+          chance_drop: number
+          cor?: string
+          created_at?: string
+          id: number
+          nome: string
+          taxa_sucesso: number
+          tier: number
+        }
+        Update: {
+          chance_drop?: number
+          cor?: string
+          created_at?: string
+          id?: number
+          nome?: string
+          taxa_sucesso?: number
+          tier?: number
+        }
+        Relationships: []
+      }
       creatures: {
         Row: {
           capturada_em: string
+          exp: number
           id: string
           is_shiny: boolean
           iv_ataque: number
@@ -31,6 +62,7 @@ export type Database = {
         }
         Insert: {
           capturada_em?: string
+          exp?: number
           id?: string
           is_shiny?: boolean
           iv_ataque?: number
@@ -45,6 +77,7 @@ export type Database = {
         }
         Update: {
           capturada_em?: string
+          exp?: number
           id?: string
           is_shiny?: boolean
           iv_ataque?: number
@@ -70,26 +103,53 @@ export type Database = {
       hunting_sessions: {
         Row: {
           creature_id: string
+          exp_total: number
+          fase: number
+          fase_kills: number
           id: string
           iniciado_em: string
+          kills_total: number
+          pending_expira_em: string | null
+          pending_nivel: number | null
+          pending_species_id: number | null
+          pressao: number
           region_id: number
           ultima_coleta_em: string
+          ultima_resolucao_em: string
           user_id: string
         }
         Insert: {
           creature_id: string
+          exp_total?: number
+          fase?: number
+          fase_kills?: number
           id?: string
           iniciado_em?: string
+          kills_total?: number
+          pending_expira_em?: string | null
+          pending_nivel?: number | null
+          pending_species_id?: number | null
+          pressao?: number
           region_id: number
           ultima_coleta_em?: string
+          ultima_resolucao_em?: string
           user_id: string
         }
         Update: {
           creature_id?: string
+          exp_total?: number
+          fase?: number
+          fase_kills?: number
           id?: string
           iniciado_em?: string
+          kills_total?: number
+          pending_expira_em?: string | null
+          pending_nivel?: number | null
+          pending_species_id?: number | null
+          pressao?: number
           region_id?: number
           ultima_coleta_em?: string
+          ultima_resolucao_em?: string
           user_id?: string
         }
         Relationships: [
@@ -98,6 +158,13 @@ export type Database = {
             columns: ["creature_id"]
             isOneToOne: false
             referencedRelation: "creatures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hunting_sessions_pending_species_id_fkey"
+            columns: ["pending_species_id"]
+            isOneToOne: false
+            referencedRelation: "species"
             referencedColumns: ["id"]
           },
           {
@@ -111,18 +178,21 @@ export type Database = {
       }
       profiles: {
         Row: {
+          auto_captura: boolean
           criado_em: string
           id: string
           nome_treinador: string
           starter_escolhido: boolean
         }
         Insert: {
+          auto_captura?: boolean
           criado_em?: string
           id: string
           nome_treinador: string
           starter_escolhido?: boolean
         }
         Update: {
+          auto_captura?: boolean
           criado_em?: string
           id?: string
           nome_treinador?: string
@@ -133,6 +203,7 @@ export type Database = {
       regions: {
         Row: {
           descricao: string | null
+          fases: number
           id: number
           multiplicador_raridade: number
           nivel_maximo: number
@@ -142,6 +213,7 @@ export type Database = {
         }
         Insert: {
           descricao?: string | null
+          fases?: number
           id?: number
           multiplicador_raridade?: number
           nivel_maximo: number
@@ -151,6 +223,7 @@ export type Database = {
         }
         Update: {
           descricao?: string | null
+          fases?: number
           id?: number
           multiplicador_raridade?: number
           nivel_maximo?: number
@@ -201,6 +274,38 @@ export type Database = {
           velocidade_base?: number
         }
         Relationships: []
+      }
+      user_items: {
+        Row: {
+          created_at: string
+          item_id: number
+          quantidade: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          item_id: number
+          quantidade?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          item_id?: number
+          quantidade?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "capture_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

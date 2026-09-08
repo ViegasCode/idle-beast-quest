@@ -14,7 +14,194 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      creatures: {
+        Row: {
+          capturada_em: string
+          id: string
+          is_shiny: boolean
+          iv_ataque: number
+          iv_defesa: number
+          iv_hp: number
+          iv_velocidade: number
+          nature: string
+          nivel: number
+          raridade: string
+          species_id: number
+          user_id: string
+        }
+        Insert: {
+          capturada_em?: string
+          id?: string
+          is_shiny?: boolean
+          iv_ataque?: number
+          iv_defesa?: number
+          iv_hp?: number
+          iv_velocidade?: number
+          nature?: string
+          nivel?: number
+          raridade?: string
+          species_id: number
+          user_id: string
+        }
+        Update: {
+          capturada_em?: string
+          id?: string
+          is_shiny?: boolean
+          iv_ataque?: number
+          iv_defesa?: number
+          iv_hp?: number
+          iv_velocidade?: number
+          nature?: string
+          nivel?: number
+          raridade?: string
+          species_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creatures_species_id_fkey"
+            columns: ["species_id"]
+            isOneToOne: false
+            referencedRelation: "species"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hunting_sessions: {
+        Row: {
+          creature_id: string
+          id: string
+          iniciado_em: string
+          region_id: number
+          ultima_coleta_em: string
+          user_id: string
+        }
+        Insert: {
+          creature_id: string
+          id?: string
+          iniciado_em?: string
+          region_id: number
+          ultima_coleta_em?: string
+          user_id: string
+        }
+        Update: {
+          creature_id?: string
+          id?: string
+          iniciado_em?: string
+          region_id?: number
+          ultima_coleta_em?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hunting_sessions_creature_id_fkey"
+            columns: ["creature_id"]
+            isOneToOne: false
+            referencedRelation: "creatures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hunting_sessions_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          criado_em: string
+          id: string
+          nome_treinador: string
+          starter_escolhido: boolean
+        }
+        Insert: {
+          criado_em?: string
+          id: string
+          nome_treinador: string
+          starter_escolhido?: boolean
+        }
+        Update: {
+          criado_em?: string
+          id?: string
+          nome_treinador?: string
+          starter_escolhido?: boolean
+        }
+        Relationships: []
+      }
+      regions: {
+        Row: {
+          descricao: string | null
+          id: number
+          multiplicador_raridade: number
+          nivel_maximo: number
+          nivel_minimo: number
+          nome: string
+          species_ids: number[]
+        }
+        Insert: {
+          descricao?: string | null
+          id?: number
+          multiplicador_raridade?: number
+          nivel_maximo: number
+          nivel_minimo: number
+          nome: string
+          species_ids?: number[]
+        }
+        Update: {
+          descricao?: string | null
+          id?: number
+          multiplicador_raridade?: number
+          nivel_maximo?: number
+          nivel_minimo?: number
+          nome?: string
+          species_ids?: number[]
+        }
+        Relationships: []
+      }
+      species: {
+        Row: {
+          ataque_base: number
+          defesa_base: number
+          hp_base: number
+          id: number
+          is_starter: boolean
+          nome: string
+          sprite_url: string | null
+          taxa_raridade_base: number
+          tipo_primario: string
+          tipo_secundario: string | null
+          velocidade_base: number
+        }
+        Insert: {
+          ataque_base: number
+          defesa_base: number
+          hp_base: number
+          id?: number
+          is_starter?: boolean
+          nome: string
+          sprite_url?: string | null
+          taxa_raridade_base?: number
+          tipo_primario: string
+          tipo_secundario?: string | null
+          velocidade_base: number
+        }
+        Update: {
+          ataque_base?: number
+          defesa_base?: number
+          hp_base?: number
+          id?: number
+          is_starter?: boolean
+          nome?: string
+          sprite_url?: string | null
+          taxa_raridade_base?: number
+          tipo_primario?: string
+          tipo_secundario?: string | null
+          velocidade_base?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -159,16 +159,19 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
         }
       }
 
-      if (inimigo.is_capturavel) {
+      // TODO: todos os inimigos são elegíveis para captura — remover restrições antigas
+      {
         const disponiveis = catalogo
           .filter((i) => (inventario.get(i.id) ?? 0) > 0)
           .sort((a, b) => Number(b.taxa_sucesso) - Number(a.taxa_sucesso));
         const dentroDaJanela = budget <= JANELA_CAPTURA_MS;
         const melhor = disponiveis[0];
 
+        // Modo automático: consome o melhor item disponível e tenta a captura imediatamente
         if (profile?.auto_captura && melhor) {
           inventario.set(melhor.id, (inventario.get(melhor.id) ?? 0) - 1);
-          if (rng() < Number(melhor.taxa_sucesso)) {
+          // Chance fixa de 10% por tentativa
+          if (rng() < 0.1) {
             novasCriaturas.push(
               novaCriatura(userId, inimigo.species_id, inimigo.nivel, sortearRaridade(mult, rng)),
             );
@@ -176,12 +179,14 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
             capturasFalhadas++;
           }
         } else if (dentroDaJanela) {
+          // Modo manual: coloca pending para exibir botão de captura ao jogador
           pending = {
             species_id: inimigo.species_id,
             nivel: inimigo.nivel,
             expira_em: new Date(agora - budget + JANELA_CAPTURA_MS).toISOString(),
           };
-        } else if (!melhor) {
+        } else if (profile?.auto_captura && !melhor) {
+          // Auto tentou mas não tinha item: contabiliza perda
           perdidasSemItem++;
         }
       }
@@ -351,7 +356,8 @@ export const tentarCaptura = createServerFn({ method: "POST" })
       .eq("user_id", userId)
       .eq("item_id", item.id);
 
-    const sucesso = Math.random() < Number(item.taxa_sucesso);
+    // Chance fixa de 10% por tentativa
+    const sucesso = Math.random() < 0.1;
     let criatura: any = null;
     if (sucesso) {
       const mult = Number(session.regions?.multiplicador_raridade) || 1;

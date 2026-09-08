@@ -245,7 +245,8 @@ export function inimigosDaFase(
   for (let i = 0; i < INIMIGOS_POR_FASE; i++) {
     const rng = mulberry32(hashSeed(regiao.id, fase, i));
     const s = pool[Math.floor(rng() * pool.length)] ?? pool[0]!;
-    const nivel = Math.max(1, nivelBase + Math.floor(rng() * 3) - 1);
+    // reduzir variação de nível dos inimigos para deixá-los menos fortes que o jogador
+    const nivel = Math.max(1, nivelBase + Math.floor(rng() * 2) - 1);
     const iv = () => Math.floor(rng() * 26);
     const comb = combatenteDoJogador({
       nivel,
@@ -259,15 +260,17 @@ export function inimigosDaFase(
     });
     comb.nome = s.nome;
     // inimigos selvagens são um pouco mais fracos que criaturas treinadas
-    comb.ataque = Math.max(1, Math.round(comb.ataque * 0.6));
-    comb.defesa = Math.max(1, Math.round(comb.defesa * 0.7));
-    comb.hpMax = Math.max(8, Math.round(comb.hpMax * 0.85));
+    // enfraquecer inimigos para uma experiência de exploração mais suave
+    comb.ataque = Math.max(1, Math.round(comb.ataque * 0.5));
+    comb.defesa = Math.max(1, Math.round(comb.defesa * 0.6));
+    comb.hpMax = Math.max(6, Math.round(comb.hpMax * 0.75));
     lista.push({
       index: i,
       species_id: s.id,
       nome: s.nome,
       nivel,
-      is_capturavel: rng() < CHANCE_CAPTURAVEL,
+      // Tornar todo inimigo derrotado elegível para captura
+      is_capturavel: true,
       sprite_url: s.sprite_url,
       tipos: [s.tipo_primario, s.tipo_secundario],
       combatente: comb,
@@ -381,11 +384,13 @@ export function simularBatalha(
 /* ---------------- Recompensas ---------------- */
 
 export function expPorAbate(nivelInimigo: number) {
-  return Math.round(14 + nivelInimigo * 7);
+  // aumentar recompensa base de experiência para progressão mais rápida
+  return Math.round(20 + nivelInimigo * 12);
 }
 
 export function expNecessaria(nivel: number) {
-  return Math.round(60 * Math.pow(nivel, 1.45));
+  // reduzir crescimento da curva de experiência para facilitar up
+  return Math.round(40 * Math.pow(nivel, 1.35));
 }
 
 export function sortearRaridade(mult: number, rng: () => number): Rarity {

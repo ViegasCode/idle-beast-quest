@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/cacando")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Cacando;
+  component: Cacando,
 });
 
 function Cacando() {

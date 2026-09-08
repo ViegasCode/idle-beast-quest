@@ -11,6 +11,8 @@ import {
   tentarCaptura,
   listCollection,
   setActiveCreature,
+  setSelectedPhase,
+  setRepeatPhase,
 } from "@/lib/game.functions";
 import { CreatureCard, type CreatureRow } from "@/components/CreatureCard";
 import { CombatArena } from "@/components/CombatArena";
@@ -47,6 +49,8 @@ function Combate() {
   const alternarAuto = useServerFn(setAutoCaptura);
   const coletar = useServerFn(coletarResumo);
   const trocarRegiao = useServerFn(changeRegion);
+  const setPhaseFn = useServerFn(setSelectedPhase);
+  const repeatPhaseFn = useServerFn(setRepeatPhase);
 
   const [agora, setAgora] = useState(() => Date.now());
   const [resumoOffline, setResumoOffline] = useState<any>(null);
@@ -101,6 +105,24 @@ function Combate() {
       toast.success("Resumo coletado. Contadores reiniciados.");
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  const selectPhaseMutation = useMutation({
+    mutationFn: (fase: number) => setPhaseFn({ data: { fase } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["combatState"] });
+      toast.success("Fase selecionada.");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao selecionar fase"),
+  });
+
+  const repeatMutation = useMutation({
+    mutationFn: (payload: { ativo: boolean; fase?: number | null }) => repeatPhaseFn({ data: payload }),
+    onSuccess: async (res: any) => {
+      await queryClient.invalidateQueries({ queryKey: ["combatState"] });
+      toast.success(res.ativo ? `Repetindo fase ${res.fase}` : "Repetição de fase desativada");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao alternar repetição"),
   });
 
   const regiaoMutation = useMutation({
@@ -229,6 +251,41 @@ function Combate() {
                     className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-[width]"
                     style={{ width: `${((session.fase_kills ?? 0) / INIMIGOS_POR_FASE) * 100}%` }}
                   />
+                </div>
+
+                <div className="mt-4">
+                  <p className="text-xs font-bold text-muted-foreground">Seleção de Fase</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {Array.from({ length: regiao?.fases ?? 8 }).map((_, i) => {
+                      const num = i + 1;
+                      const selected = session.fase === num;
+                      return (
+                        <button
+                          key={num}
+                          onClick={() => selectPhaseMutation.mutate(num)}
+                          className={`rounded-xl px-3 py-2 text-xs font-bold transition ${selected ? 'bg-primary text-primary-foreground' : 'border border-border bg-surface-2/60'}`}>
+                          {`F${num}`}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(state?.profile?.repetir_fase)}
+                        onChange={(e) => {
+                          const ativo = e.target.checked;
+                          // when enabling, send the currently selected phase (session.fase)
+                          repeatMutation.mutate({ ativo, fase: ativo ? session?.fase ?? 1 : null });
+                        }}
+                        className="size-4 accent-primary"
+                      />
+                      <span className="text-sm font-bold">Repetir fase selecionada</span>
+                    </label>
+                    <span className="text-xs text-muted-foreground">(Selecione uma fase acima e ative para farm em loop)</span>
+                  </div>
                 </div>
 
                 <div className="mt-5">

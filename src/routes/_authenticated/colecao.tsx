@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { getGameState, listCollection } from "@/lib/game.functions";
+import { getCombatState, listCollection } from "@/lib/game.functions";
 import { CreatureCard, type CreatureRow } from "@/components/CreatureCard";
 import { GameNav } from "@/components/GameNav";
 import { RARITIES } from "@/lib/game";
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/colecao")({
 
 function Colecao() {
   const fetchColecao = useServerFn(listCollection);
-  const fetchState = useServerFn(getGameState);
+  const fetchState = useServerFn(getCombatState);
   const [filtro, setFiltro] = useState<string>("Todas");
 
   const { data: state } = useQuery({ queryKey: ["gameState"], queryFn: () => fetchState() });

@@ -29,7 +29,7 @@ function Inicial() {
 
   const [nome, setNome] = useState("");
 
-  const { data: state } = useQuery({ queryKey: ["gameState"], queryFn: () => fetchState() });
+  const { data: state } = useQuery({ queryKey: ["combatState"], queryFn: () => fetchState() });
   const { data: starters } = useQuery({ queryKey: ["starters"], queryFn: () => fetchStarters() });
 
   useEffect(() => {
@@ -38,7 +38,7 @@ function Inicial() {
 
   const perfilMutation = useMutation({
     mutationFn: (nome_treinador: string) => salvarPerfil({ data: { nome_treinador } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gameState"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["combatState"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 

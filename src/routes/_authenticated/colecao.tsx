@@ -26,7 +26,7 @@ function Colecao() {
   const fetchState = useServerFn(getCombatState);
   const [filtro, setFiltro] = useState<string>("Todas");
 
-  const { data: state } = useQuery({ queryKey: ["gameState"], queryFn: () => fetchState() });
+  const { data: state } = useQuery({ queryKey: ["combatState"], queryFn: () => fetchState() });
   const { data, isPending } = useQuery({
     queryKey: ["colecao"],
     queryFn: () => fetchColecao(),

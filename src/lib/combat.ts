@@ -302,7 +302,7 @@ function escolheGolpe(c: Combatente, alvo: Combatente, rng: () => number) {
     for (const g of GOLPES[t] ?? []) opcoes.push({ ...g, tipo: t });
   }
   const neutro = { ...golpeNeutro(), tipo: "Neutro" };
-  if (!opcoes.length) return neutro;
+  opcoes.push(neutro);
   // favorece o golpe mais efetivo, com variação
   let melhor = opcoes[0]!;
   let melhorScore = -1;
@@ -344,7 +344,7 @@ export function simularBatalha(
   const turnos: TurnoLog[] = [];
   const jogadorPrimeiro = jogador.velocidade >= inimigo.velocidade;
 
-  for (let t = 0; t < 40 && hpJ > 0 && hpI > 0; t++) {
+  for (let t = 0; t < 60 && hpJ > 0 && hpI > 0; t++) {
     const ordem: ("jogador" | "inimigo")[] = jogadorPrimeiro
       ? ["jogador", "inimigo"]
       : ["inimigo", "jogador"];

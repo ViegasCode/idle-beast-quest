@@ -30,7 +30,7 @@ export function GameNav({
             to="/cacando"
             className="rounded-lg px-3 py-2 text-muted-foreground transition hover:bg-surface-2 hover:text-foreground [&.active]:bg-surface-2 [&.active]:text-primary"
           >
-            Caçando
+            Combate
           </Link>
           <Link
             to="/colecao"

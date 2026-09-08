@@ -199,7 +199,7 @@ export function combatenteDoJogador(c: CreatureLike): Combatente {
     is_shiny: c.is_shiny,
     hpMax: Math.max(
       12,
-      Math.floor((((2 * hpBase + c.iv_hp) * c.nivel) / 100 + c.nivel + 10) * (m["hp"] ?? 1)),
+      Math.floor((((2 * hpBase + c.iv_hp) * c.nivel) / 50 + c.nivel + 25) * (m["hp"] ?? 1)),
     ),
     ataque: statFinal(s?.ataque_base ?? 45, c.iv_ataque, c.nivel, m["ataque"] ?? 1),
     defesa: statFinal(s?.defesa_base ?? 45, c.iv_defesa, c.nivel, m["defesa"] ?? 1),
@@ -322,7 +322,7 @@ function dano(
 ) {
   const eff = golpe.tipo === "Neutro" ? 1 : efetividade(golpe.tipo, defensor.tipos);
   const bruto =
-    (((2 * atacante.nivel) / 5 + 2) * atacante.ataque * golpe.power) / Math.max(1, defensor.defesa) / 50 +
+    (((2 * atacante.nivel) / 5 + 2) * atacante.ataque * golpe.power) / Math.max(1, defensor.defesa) / 85 +
     2;
   const variacao = 0.85 + rng() * 0.3;
   const critico = rng() < 0.07 ? 1.5 : 1;

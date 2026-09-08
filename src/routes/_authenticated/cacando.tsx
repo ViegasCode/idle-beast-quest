@@ -9,6 +9,8 @@ import {
   getCombatState,
   setAutoCaptura,
   tentarCaptura,
+  listCollection,
+  setActiveCreature,
 } from "@/lib/game.functions";
 import { CreatureCard, type CreatureRow } from "@/components/CreatureCard";
 import { CombatArena } from "@/components/CombatArena";
@@ -128,6 +130,44 @@ function Combate() {
   const totalItens = inventario.reduce((s: number, i: any) => s + i.quantidade, 0);
   const restaPending = pending ? new Date(pending.expira_em).getTime() - agora : 0;
 
+  // Time selection (até 3) — persistido em localStorage por enquanto
+  const [teamIds, setTeamIds] = useState<string[]>(() => {
+    try {
+      const v = localStorage.getItem("team");
+      return v ? JSON.parse(v) : session?.creature_id ? [session.creature_id] : [];
+    } catch {
+      return session?.creature_id ? [session.creature_id] : [];
+    }
+  });
+  const [choosing, setChoosing] = useState(false);
+
+  const listar = useServerFn(listCollection);
+  const { data: collection } = useQuery({ queryKey: ["collection"], queryFn: () => listar() });
+
+  useEffect(() => {
+    // manter líder sincronizado com session.creature_id se não houver time salvo
+    if ((!teamIds || teamIds.length === 0) && session?.creature_id) setTeamIds([session.creature_id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.creature_id]);
+
+  function toggleSelect(id: string) {
+    setTeamIds((prev) => {
+      const has = prev.includes(id);
+      let next = has ? prev.filter((x) => x !== id) : [...prev, id].slice(0, 3);
+      localStorage.setItem("team", JSON.stringify(next));
+      return next;
+    });
+  }
+
+  const saveLeader = useMutation({
+    mutationFn: (creature_id: string) => setActiveCreature({ data: { creature_id } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["combatState"] });
+      toast.success("Líder do time atualizado.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <>
       <GameNav treinador={state?.profile?.nome_treinador} total={state?.totalCriaturas} />
@@ -192,10 +232,28 @@ function Combate() {
                 </div>
 
                 <div className="mt-5">
+                  {
+                    // construir representação simples do time a partir da coleção
+                  }
                   <CombatArena
                     jogador={jogador}
                     fila={fila}
                     indiceInicial={session.fase_kills ?? 0}
+                    regiao={regiao}
+                    time={(teamIds || [])
+                      .map((id) => (collection ?? []).find((x: any) => x.id === id))
+                      .filter(Boolean)
+                      .map((c: any) => ({
+                        nome: c.species?.nome ?? "Criatura",
+                        nivel: c.nivel,
+                        tipos: [c.species?.tipo_primario ?? null, c.species?.tipo_secundario ?? null],
+                        sprite_url: c.species?.sprite_url ?? null,
+                        hpMax: 10,
+                        ataque: 1,
+                        defesa: 1,
+                        velocidade: 1,
+                        is_shiny: c.is_shiny,
+                      }))}
                   />
                 </div>
 
@@ -293,9 +351,73 @@ function Combate() {
 
                 <div>
                   <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Criatura ativa
+                    Time de combate (até 3)
                   </h2>
-                  {criatura ? <CreatureCard creature={criatura} /> : null}
+                  <div className="mb-3 flex gap-2">
+                    {teamIds.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma criatura selecionada.</p>}
+                    {teamIds.map((id) => {
+                      const c = (collection ?? []).find((x: any) => x.id === id) as any;
+                      return c ? (
+                        <div key={id} className="w-28">
+                          <CreatureCard creature={c} />
+                        </div>
+                      ) : (
+                        <div key={id} className="w-28 rounded-xl bg-secondary/40 p-3 text-center">Carregando...</div>
+                      );
+                    })}
+                    {Array.from({ length: Math.max(0, 3 - teamIds.length) }).map((_, i) => (
+                      <div key={i} className="w-28 rounded-xl border border-border bg-surface-2/60 p-3 text-center text-xs text-muted-foreground">
+                        Vazio
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setChoosing((v) => !v)}
+                      className="rounded-xl border px-3 py-2 text-xs"
+                    >
+                      {choosing ? "Fechar seleção" : "Montar/Editar time"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (teamIds[0]) saveLeader.mutate(teamIds[0]);
+                      }}
+                      disabled={!teamIds[0] || saveLeader.isLoading}
+                      className="rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-60"
+                    >
+                      Salvar líder
+                    </button>
+                  </div>
+
+                  {choosing && (
+                    <div className="mt-3 space-y-2 max-h-64 overflow-y-auto">
+                      {(collection ?? []).map((c: any) => (
+                        <label key={c.id} className="flex items-center gap-3 rounded-xl border px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={teamIds.includes(c.id)}
+                            onChange={() => toggleSelect(c.id)}
+                            className="size-4"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                {c.species?.sprite_url ? (
+                                  <img src={c.species.sprite_url} alt={c.species.nome} className="size-8" />
+                                ) : null}
+                                <div>
+                                  <div className="font-bold text-sm">{c.species?.nome}</div>
+                                  <div className="text-xs text-muted-foreground">Nv. {c.nivel}</div>
+                                </div>
+                              </div>
+                              <div className="text-sm font-semibold">{c.raridade}</div>
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="panel p-4">

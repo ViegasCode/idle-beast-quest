@@ -259,8 +259,9 @@ export function inimigosDaFase(
     });
     comb.nome = s.nome;
     // inimigos selvagens são um pouco mais fracos que criaturas treinadas
-    comb.ataque = Math.max(1, Math.round(comb.ataque * 0.72));
-    comb.defesa = Math.max(1, Math.round(comb.defesa * 0.85));
+    comb.ataque = Math.max(1, Math.round(comb.ataque * 0.6));
+    comb.defesa = Math.max(1, Math.round(comb.defesa * 0.7));
+    comb.hpMax = Math.max(8, Math.round(comb.hpMax * 0.85));
     lista.push({
       index: i,
       species_id: s.id,
@@ -325,7 +326,7 @@ function dano(
 ) {
   const eff = golpe.tipo === "Neutro" ? 1 : efetividade(golpe.tipo, defensor.tipos);
   const bruto =
-    (((2 * atacante.nivel) / 5 + 2) * atacante.ataque * golpe.power) / Math.max(1, defensor.defesa) / 85 +
+    (((2 * atacante.nivel) / 5 + 2) * atacante.ataque * golpe.power) / Math.max(1, defensor.defesa) / 55 +
     2;
   const variacao = 0.85 + rng() * 0.3;
   const critico = rng() < 0.07 ? 1.5 : 1;

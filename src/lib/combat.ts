@@ -3,11 +3,11 @@ import { NATURES, RARITIES, RARITY_BASE_WEIGHTS, type Rarity } from "./game";
 export const CAP_HORAS = 12;
 export const CAP_MS = CAP_HORAS * 60 * 60 * 1000;
 export const TURNO_MS = 1400;
-export const PAUSA_ENTRE_BATALHAS_MS = 1600;
+export const PAUSA_ENTRE_BATALHAS_MS = 5000;
 export const JANELA_CAPTURA_MS = 45_000;
 export const CHANCE_CAPTURAVEL = 0.32;
 export const INIMIGOS_POR_FASE = 5;
-export const MAX_BATALHAS_POR_RESOLUCAO = 900;
+export const MAX_BATALHAS_POR_RESOLUCAO = 3000;
 
 /* ---------------- RNG determinístico ---------------- */
 

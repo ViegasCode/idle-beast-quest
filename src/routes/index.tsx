@@ -37,12 +37,14 @@ function Landing() {
         MVP · Caça idle
       </span>
       <h1 className="mt-6 text-4xl font-extrabold sm:text-6xl">
-        Sua criatura caça <span className="text-gradient">enquanto você vive</span>
+        Sua criatura batalha <span className="text-gradient">enquanto você vive</span>
       </h1>
       <p className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
-        Escolha seu inicial, envie-o para uma região selvagem e volte para coletar tudo o que ele
-        capturou — até 12 horas de progresso acumulado, com a aba fechada.
+        Escolha seu inicial e assista às auto-batalhas por fases contra as criaturas selvagens da
+        região. Vença, ganhe itens de captura e capture os inimigos capturáveis — até 12 horas de
+        combate continuam sendo calculadas com a aba fechada.
       </p>
+
 
       <div className="mt-9 flex flex-wrap justify-center gap-3">
         <Link
@@ -61,7 +63,7 @@ function Landing() {
 
       <div className="mt-14 grid w-full gap-4 sm:grid-cols-3">
         {[
-          { t: "Progresso offline", d: "Cálculo feito no servidor a cada coleta, nunca no navegador." },
+          { t: "Combate idle visível", d: "Auto-batalhas por fases, calculadas no servidor até 12h offline." },
           { t: "IVs e natures", d: "Cada criatura é única: IVs de 0 a 31 e uma entre 10 natures." },
           { t: "Raridade e shiny", d: "De Comum a Mítico, com chance de shiny de 1 em 500." },
         ].map((f) => (

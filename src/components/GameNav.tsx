@@ -2,7 +2,13 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export function GameNav({ treinador, total }: { treinador?: string; total?: number }) {
+export function GameNav({
+  treinador,
+  total,
+}: {
+  treinador?: string | undefined;
+  total?: number | undefined;
+}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 

@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import { PawPrint, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { chooseStarter, createProfile, getCombatState, getStarters } from "@/lib/game.functions";
@@ -89,89 +90,90 @@ function Inicial() {
   const temPerfil = !!(perfilLocal ?? state?.profile);
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10">
+    <main className="pixel-screen">
       {!temPerfil ? (
-        <div className="panel mx-auto max-w-md p-7">
-          <h1 className="text-2xl font-extrabold">Qual seu nome de treinador?</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Ele aparece no seu perfil de caçador.
-          </p>
-          <form
-            className="mt-5 space-y-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              perfilMutation.mutate(nome);
-            }}
-          >
-            <input
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              required
-              minLength={2}
-              maxLength={24}
-              placeholder="Ex: Kaia do Vale"
-              className="w-full rounded-xl border border-input bg-background/60 px-4 py-3 text-sm outline-none focus:border-primary"
-            />
-            <button
-              disabled={perfilMutation.isPending}
-              className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:brightness-110 disabled:opacity-60"
+        <div className="pixel-frame w-full max-w-md">
+          <div className="panel-heading">
+            <span><Shield /> Registro</span>
+            <span className="text-[9px] uppercase text-muted-foreground">Passo 1/2</span>
+          </div>
+          <div className="pixel-body">
+            <h1 className="pixel-title">Nome de treinador</h1>
+            <p className="pixel-sub">Ele aparece no seu perfil de caçador.</p>
+            <form
+              className="mt-5 space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                perfilMutation.mutate(nome);
+              }}
             >
-              Continuar
-            </button>
-          </form>
+              <input
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                required
+                minLength={2}
+                maxLength={24}
+                placeholder="Ex: Kaia do Vale"
+                className="pixel-input"
+              />
+              <button disabled={perfilMutation.isPending} className="pixel-button">
+                Continuar
+              </button>
+            </form>
+          </div>
         </div>
       ) : (
-        <>
-          <h1 className="text-center text-3xl font-extrabold">
-            Escolha sua <span className="text-gradient">criatura inicial</span>
-          </h1>
-          <p className="mt-2 text-center text-sm text-muted-foreground">
-            Ela será sua primeira caçadora. IVs e nature são sorteados na hora.
-          </p>
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {(starters ?? []).map((s) => (
-              <button
-                key={s.id}
-                onClick={() => starterMutation.mutate(s.id)}
-                disabled={starterMutation.isPending}
-                className="rarity-card rarity-incomum p-5 text-left disabled:opacity-60"
-              >
-                <div className="grid size-24 place-items-center overflow-hidden rounded-xl bg-secondary/60">
-                  {s.sprite_url ? (
-                    <img src={s.sprite_url} alt={s.nome} className="size-20" />
-                  ) : null}
-                </div>
-                <h2 className="mt-3 text-lg font-bold">{s.nome}</h2>
-                <p className="text-xs text-muted-foreground">
-                  {s.tipo_primario}
-                  {s.tipo_secundario ? ` / ${s.tipo_secundario}` : ""}
-                </p>
-                <dl className="mt-3 space-y-1 text-xs text-muted-foreground">
-                  <div className="flex justify-between">
-                    <dt>HP base</dt>
-                    <dd className="font-semibold text-foreground">{s.hp_base}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>Ataque</dt>
-                    <dd className="font-semibold text-foreground">{s.ataque_base}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>Defesa</dt>
-                    <dd className="font-semibold text-foreground">{s.defesa_base}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>Velocidade</dt>
-                    <dd className="font-semibold text-foreground">{s.velocidade_base}</dd>
-                  </div>
-                </dl>
-                <span className="mt-4 block rounded-lg bg-primary py-2 text-center text-xs font-bold text-primary-foreground">
-                  Escolher {s.nome}
-                </span>
-              </button>
-            ))}
+        <div className="pixel-frame w-full max-w-4xl">
+          <div className="panel-heading">
+            <span><PawPrint /> Escolha inicial</span>
+            <span className="text-[9px] uppercase text-muted-foreground">Passo 2/2</span>
           </div>
-        </>
+          <div className="pixel-body">
+            <h1 className="pixel-title text-center">Escolha sua criatura inicial</h1>
+            <p className="pixel-sub text-center">
+              Ela será sua primeira caçadora. IVs e nature são sorteados na hora.
+            </p>
+
+            <div className="starter-grid mt-6">
+              {(starters ?? []).map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => starterMutation.mutate(s.id)}
+                  disabled={starterMutation.isPending}
+                  className="starter-card"
+                >
+                  <div className="starter-portrait">
+                    {s.sprite_url ? <img src={s.sprite_url} alt={s.nome} /> : null}
+                  </div>
+                  <h2>{s.nome}</h2>
+                  <p className="text-[10px] text-muted-foreground">
+                    {s.tipo_primario}
+                    {s.tipo_secundario ? ` / ${s.tipo_secundario}` : ""}
+                  </p>
+                  <dl>
+                    <div>
+                      <dt>HP base</dt>
+                      <dd>{s.hp_base}</dd>
+                    </div>
+                    <div>
+                      <dt>Ataque</dt>
+                      <dd>{s.ataque_base}</dd>
+                    </div>
+                    <div>
+                      <dt>Defesa</dt>
+                      <dd>{s.defesa_base}</dd>
+                    </div>
+                    <div>
+                      <dt>Velocidade</dt>
+                      <dd>{s.velocidade_base}</dd>
+                    </div>
+                  </dl>
+                  <span className="pixel-button mt-1 !h-9 !text-[10px]">Escolher</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

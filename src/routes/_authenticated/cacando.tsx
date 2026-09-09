@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { CombatArena } from "@/components/CombatArena";
 import { GameNav } from "@/components/GameNav";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { changeRegion, coletarResumo, getCombatState, listCollection, setActiveCreature, setAutoCaptura, setRepeatPhase, setSelectedPhase, tentarCaptura } from "@/lib/game.functions";
 import { formatDuration } from "@/lib/game";
 import { CAP_HORAS, INIMIGOS_POR_FASE, type Combatente, type Inimigo } from "@/lib/combat";
@@ -123,19 +124,21 @@ function Combate() {
           <Button variant="ghost" size="icon" className="region-arrow" aria-label="Próxima região"><ChevronRight /></Button>
         </section>
 
-        <section className="battle-statusbar">
-          <div><Activity /><span><small>ABATES/HORA</small><b>{killsHora}</b></span></div>
-          <div><Shield /><span><small>STATUS</small><b className={pressao >= .6 ? "status-danger" : "status-good"}>{status}</b></span></div>
-          <div><Clock3 /><span><small>ÚLTIMA COLETA</small><b>{formatDuration(desdeColeta)}</b></span></div>
-          <div><Trophy /><span><small>GANHOS DA SESSÃO</small><b>+{Number(session.exp_total ?? 0).toLocaleString("pt-BR")} EXP · {session.kills_total ?? 0} KILLS</b></span></div>
+        <section className="battle-statusbar" aria-label="Resumo da expedição">
+          <div><Activity /><span><small>RITMO</small><b>{killsHora} abates/h</b></span></div>
+          <div><Shield /><span><small>COMBATE</small><b className={pressao >= .6 ? "status-danger" : "status-good"}>{status}</b></span></div>
+          <div><Clock3 /><span><small>EM EXPEDIÇÃO</small><b>{formatDuration(desdeColeta)}</b></span></div>
+          <div className="session-gains"><Trophy /><span><small>RECOMPENSAS</small><b>+{Number(session.exp_total ?? 0).toLocaleString("pt-BR")} EXP</b></span><em>{session.kills_total ?? 0} abates</em></div>
         </section>
 
         <div className="game-board">
           <section className="battle-column">
             <div className="panel-heading battle-heading">
-              <span><Swords /> {regiao?.nome}</span>
-              <Button variant="ghost" onClick={() => setShowPhases((value) => !value)} className="phase-button">FASE {session.fase}/{phaseTotal} <ChevronRight /></Button>
-              <div className="phase-progress"><span style={{ width: `${((session.fase_kills ?? 0) / INIMIGOS_POR_FASE) * 100}%` }} /></div>
+              <span><Swords /> <span><small>ÁREA DE CAÇA</small>{regiao?.nome}</span></span>
+              <div className="phase-control">
+                <div className="phase-progress" aria-label={`${session.fase_kills ?? 0} de ${INIMIGOS_POR_FASE} inimigos derrotados`}><span style={{ width: `${((session.fase_kills ?? 0) / INIMIGOS_POR_FASE) * 100}%` }} /></div>
+                <Button variant="ghost" onClick={() => setShowPhases((value) => !value)} className="phase-button">FASE {session.fase}/{phaseTotal} <ChevronRight className={showPhases ? "is-open" : ""} /></Button>
+              </div>
             </div>
             {showPhases && <div className="phase-picker">
               {phases.map((phase) => { const isBoss = phase === bossPhase; const disabled = isBoss && !hasBossKey; return <Button size="sm" variant={phase === session.fase ? "default" : "outline"} disabled={disabled} key={phase} onClick={() => phaseMutation.mutate(phase)}>{isBoss ? "CHEFE" : phase}</Button>; })}
@@ -144,7 +147,7 @@ function Combate() {
             <CombatArena jogador={jogador} fila={fila} indiceInicial={session.fase_kills ?? 0} regiao={regiao} time={combatTeam} />
 
             <section className="team-deck">
-              <div className="team-deck-title"><span>TIME ATIVO</span><small>Escolha até 3 · o primeiro é o líder</small></div>
+              <div className="team-deck-title"><span><Shield /> TIME ATIVO</span><small>Até 3 criaturas · destaque dourado indica o líder</small></div>
               <div className="team-grid">
                 {members.map((creature, index) => {
                   const isLeader = creature.id === session.creature_id;
@@ -162,7 +165,7 @@ function Combate() {
           </section>
 
           <aside className="capture-column">
-            <div className="panel-heading"><span><Crosshair /> CAPTURA</span><span className="capture-timer">{pending && pendingLeft > 0 ? `${Math.ceil(pendingLeft / 1000)}s` : "—"}</span></div>
+            <div className="panel-heading capture-heading"><span><Crosshair /> CENTRAL DE CAPTURA</span><span className="capture-timer">{pending && pendingLeft > 0 ? `${Math.ceil(pendingLeft / 1000)}s` : "AGUARDANDO"}</span></div>
             <section className="capture-target">
               {pending && pendingLeft > 0 ? <><div className="capture-portrait">{pending.species?.sprite_url ? <img src={pending.species.sprite_url} alt={pending.species.nome} /> : <Crosshair />}</div><div className="capture-data"><b>{pending.species?.nome ?? "Criatura"}</b><span>Nv. {pending.nivel}</span><small>CRIATURA CAPTURÁVEL</small></div></> : <div className="capture-empty"><Crosshair /><b>Nenhum alvo disponível</b><span>Derrote inimigos capturáveis</span></div>}
             </section>
@@ -171,11 +174,20 @@ function Combate() {
             </div>
             <Button className="capture-cta" disabled={!pending || pendingLeft <= 0 || totalItens === 0 || captureMutation.isPending} onClick={() => captureMutation.mutate(undefined)}><Crosshair /> {totalItens === 0 ? "SEM ESFERAS" : "CAPTURAR"}</Button>
 
-            <div className="side-tabs"><span><PackageOpen /> INVENTÁRIO</span><span><Settings2 /> AJUSTES</span></div>
-            <div className="inventory-grid">{catalogo.map((item: any) => { const quantity = inventario.find((entry: any) => entry.item_id === item.id)?.quantidade ?? 0; return <div key={item.id}><span className="capture-orb small" style={{ backgroundColor: item.cor }}><span /></span><b>×{quantity}</b><small>{Math.round(Number(item.chance_drop) * 100)}% drop</small></div>; })}</div>
-            <label className="auto-capture-setting"><input type="checkbox" checked={Boolean(state?.profile?.auto_captura)} onChange={(event) => autoMutation.mutate(event.target.checked)} /><span><b>CAPTURA AUTOMÁTICA</b><small>Usa a melhor esfera disponível</small></span><Zap /></label>
-            <Button variant="outline" className="summary-button" onClick={() => summaryMutation.mutate()} disabled={summaryMutation.isPending}><Trophy /> Coletar resumo</Button>
-            <p className="offline-note">Progresso offline ativo · limite de {CAP_HORAS}h</p>
+            <Tabs defaultValue="inventory" className="side-tools">
+              <TabsList className="side-tabs">
+                <TabsTrigger value="inventory"><PackageOpen /> INVENTÁRIO</TabsTrigger>
+                <TabsTrigger value="settings"><Settings2 /> AJUSTES</TabsTrigger>
+              </TabsList>
+              <TabsContent value="inventory" className="side-tab-content">
+                <div className="inventory-grid">{catalogo.map((item: any) => { const quantity = inventario.find((entry: any) => entry.item_id === item.id)?.quantidade ?? 0; return <div key={item.id}><span className="capture-orb small" style={{ backgroundColor: item.cor }}><span /></span><b>×{quantity}</b><small>{Math.round(Number(item.chance_drop) * 100)}% drop</small></div>; })}</div>
+              </TabsContent>
+              <TabsContent value="settings" className="side-tab-content settings-content">
+                <label className="auto-capture-setting"><input type="checkbox" checked={Boolean(state?.profile?.auto_captura)} onChange={(event) => autoMutation.mutate(event.target.checked)} /><span><b>CAPTURA AUTOMÁTICA</b><small>Usa a melhor esfera disponível</small></span><Zap /></label>
+                <Button variant="outline" className="summary-button" onClick={() => summaryMutation.mutate()} disabled={summaryMutation.isPending}><Trophy /> Coletar resumo</Button>
+                <p className="offline-note">Progresso offline ativo · limite de {CAP_HORAS}h</p>
+              </TabsContent>
+            </Tabs>
           </aside>
         </div>
       </main>

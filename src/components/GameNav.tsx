@@ -23,15 +23,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
-const lockedItems = [
-  { label: "Mundo", icon: Globe2 },
-  { label: "Cidade", icon: Castle },
-  { label: "Time", icon: Users },
-  { label: "Bolsa", icon: Backpack },
-  { label: "Loja", icon: Store },
-  { label: "Missões", icon: ScrollText },
-];
-
 export function GameNav({ treinador, total }: { treinador?: string; total?: number }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -72,21 +63,21 @@ export function GameNav({ treinador, total }: { treinador?: string; total?: numb
       <aside className={`game-sidebar ${open ? "game-sidebar-open" : ""}`}>
         <div className="sidebar-crest"><Shield /><span>A</span></div>
         <nav className="mt-3 grid gap-1.5">
-          <button className={navClass(false)} onClick={() => toast.info("O mapa do mundo será liberado em uma próxima fase.")}><Globe2 /><span>Mundo</span></button>
+          <Button variant="ghost" className={navClass(false)} onClick={() => toast.info("O mapa do mundo será liberado em uma próxima fase.")}><Globe2 /><span>Mundo</span></Button>
           <Link to="/cacando" className={navClass(pathname === "/cacando")} onClick={() => setOpen(false)}><Swords /><span>Batalha</span></Link>
-          <button className={navClass(false)} onClick={() => toast.info("A cidade ainda está em construção.")}><Castle /><span>Cidade</span></button>
-          <button className={navClass(false)} onClick={() => toast.info("Monte seu time na tela de batalha.")}><Users /><span>Time</span></button>
+          <Button variant="ghost" className={navClass(false)} onClick={() => toast.info("A cidade ainda está em construção.")}><Castle /><span>Cidade</span></Button>
+          <Button variant="ghost" className={navClass(false)} onClick={() => toast.info("Monte seu time na tela de batalha.")}><Users /><span>Time</span></Button>
           <Link to="/colecao" className={navClass(pathname === "/colecao")} onClick={() => setOpen(false)}><PawPrint /><span>Capturas</span></Link>
-          <button className={navClass(false)} onClick={() => toast.info("Seus itens aparecem na tela de batalha.")}><Backpack /><span>Bolsa</span></button>
-          <button className={navClass(false)} onClick={() => toast.info("A loja ainda não está disponível.")}><Store /><span>Loja</span></button>
-          <button className={navClass(false)} onClick={() => toast.info("As missões serão liberadas em breve.")}><ScrollText /><span>Missões</span></button>
+          <Button variant="ghost" className={navClass(false)} onClick={() => toast.info("Seus itens aparecem na tela de batalha.")}><Backpack /><span>Bolsa</span></Button>
+          <Button variant="ghost" className={navClass(false)} onClick={() => toast.info("A loja ainda não está disponível.")}><Store /><span>Loja</span></Button>
+          <Button variant="ghost" className={navClass(false)} onClick={() => toast.info("As missões serão liberadas em breve.")}><ScrollText /><span>Missões</span></Button>
         </nav>
         <div className="mt-auto border-t border-border/70 pt-3">
           <div className="mb-3 flex items-center gap-2 px-2 text-[10px] uppercase text-muted-foreground"><Trophy className="size-4 text-gold" /> {total ?? 0} criaturas</div>
           <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive" onClick={sair}><LogOut /> Sair</Button>
         </div>
       </aside>
-      {open && <button className="fixed inset-0 z-30 bg-background/75 lg:hidden" aria-label="Fechar menu" onClick={() => setOpen(false)} />}
+      {open && <Button variant="ghost" className="fixed inset-0 z-30 h-auto w-auto rounded-none bg-background/75 lg:hidden" aria-label="Fechar menu" onClick={() => setOpen(false)} />}
     </>
   );
 }

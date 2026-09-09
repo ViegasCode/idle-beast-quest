@@ -42,7 +42,7 @@ export function GameNav({ treinador, total }: { treinador?: string; total?: numb
   return (
     <>
       <header className="game-topbar">
-        <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen((value) => !value)} aria-label="Abrir menu">
+        <Button variant="ghost" size="icon" className="nav-menu-toggle" onClick={() => setOpen((value) => !value)} aria-label="Abrir menu">
           {open ? <X /> : <Menu />}
         </Button>
         <div className="game-wordmark">
@@ -77,7 +77,7 @@ export function GameNav({ treinador, total }: { treinador?: string; total?: numb
           <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive" onClick={sair}><LogOut /> Sair</Button>
         </div>
       </aside>
-      {open && <Button variant="ghost" className="fixed inset-0 z-30 h-auto w-auto rounded-none bg-background/75 lg:hidden" aria-label="Fechar menu" onClick={() => setOpen(false)} />}
+      {open && <Button variant="ghost" className="nav-backdrop fixed inset-0 z-30 h-auto w-auto rounded-none bg-background/75" aria-label="Fechar menu" onClick={() => setOpen(false)} />}
     </>
   );
 }

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import { PawPrint, Sparkles } from "lucide-react";
 import { getCombatState, listCollection } from "@/lib/game.functions";
 import { CreatureCard, type CreatureRow } from "@/components/CreatureCard";
 import { GameNav } from "@/components/GameNav";
@@ -33,6 +34,7 @@ function Colecao() {
   });
 
   const criaturas = (data ?? []) as unknown as CreatureRow[];
+  const shinies = criaturas.filter((c) => c.is_shiny).length;
   const visiveis =
     filtro === "Todas"
       ? criaturas
@@ -43,42 +45,53 @@ function Colecao() {
   return (
     <>
       <GameNav treinador={state?.profile?.nome_treinador} total={state?.totalCriaturas} />
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        <h1 className="text-2xl font-extrabold">Coleção</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {criaturas.length} criatura{criaturas.length === 1 ? "" : "s"} capturada
-          {criaturas.length === 1 ? "" : "s"}.
-        </p>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          {["Todas", ...RARITIES, "Shiny"].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFiltro(f)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                filtro === f
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-surface/70 text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-
-        {isPending ? (
-          <p className="mt-8 text-sm text-muted-foreground">Carregando coleção...</p>
-        ) : visiveis.length === 0 ? (
-          <div className="panel mt-8 p-8 text-center text-sm text-muted-foreground">
-            Nenhuma criatura aqui ainda. Volte para a caçada e colete!
+      <main className="game-main">
+        <section className="pixel-frame">
+          <div className="panel-heading">
+            <span><PawPrint /> Capturas</span>
+            <span className="text-[10px] text-muted-foreground">
+              {criaturas.length} criatura{criaturas.length === 1 ? "" : "s"}
+            </span>
           </div>
-        ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {visiveis.map((c) => (
-              <CreatureCard key={c.id} creature={c} />
-            ))}
+
+          <div className="pixel-body pb-0">
+            <div className="collection-head">
+              <div>
+                <h1 className="pixel-title">Coleção</h1>
+                <p className="pixel-sub">
+                  {criaturas.length} capturada{criaturas.length === 1 ? "" : "s"} · {shinies} shiny
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {["Todas", ...RARITIES, "Shiny"].map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setFiltro(f)}
+                    className={`pixel-chip ${filtro === f ? "is-active" : ""}`}
+                  >
+                    {f === "Shiny" ? <Sparkles className="size-3" /> : null}
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        )}
+
+          {isPending ? (
+            <div className="pixel-empty">Carregando coleção...</div>
+          ) : visiveis.length === 0 ? (
+            <div className="pixel-empty px-6 text-center text-sm">
+              Nenhuma criatura aqui ainda. Volte para a batalha e capture!
+            </div>
+          ) : (
+            <div className="collection-grid">
+              {visiveis.map((c) => (
+                <CreatureCard key={c.id} creature={c} />
+              ))}
+            </div>
+          )}
+        </section>
       </main>
     </>
   );

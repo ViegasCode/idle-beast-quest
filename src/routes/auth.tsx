@@ -1,5 +1,6 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { Shield, Swords } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { toast } from "sonner";
@@ -65,58 +66,63 @@ function AuthPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-5 py-12">
-      <div className="panel w-full max-w-md p-7">
-        <Link to="/" className="text-xs font-semibold text-primary">
-          ← Achnuba
-        </Link>
-        <h1 className="mt-3 text-2xl font-extrabold">
-          {modo === "signup" ? "Criar conta de treinador" : "Bem-vindo de volta"}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Sua caçada continua mesmo com o jogo fechado.
-        </p>
+    <main className="pixel-screen">
+      <div className="pixel-frame w-full max-w-md">
+        <div className="panel-heading">
+          <span><Shield /> Achnuba</span>
+          <span className="text-[9px] uppercase text-muted-foreground">Acesso</span>
+        </div>
 
-        <form onSubmit={enviar} className="mt-6 space-y-3">
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="seu@email.com"
-            className="w-full rounded-xl border border-input bg-background/60 px-4 py-3 text-sm outline-none focus:border-primary"
-          />
-          <input
-            type="password"
-            required
-            minLength={6}
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            placeholder="Senha (mín. 6 caracteres)"
-            className="w-full rounded-xl border border-input bg-background/60 px-4 py-3 text-sm outline-none focus:border-primary"
-          />
-          <button
-            type="submit"
-            disabled={carregando}
-            className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:brightness-110 disabled:opacity-60"
-          >
-            {carregando ? "Aguarde..." : modo === "signup" ? "Criar conta" : "Entrar"}
+        <div className="pixel-body">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="grid size-12 place-items-center border-2 border-border bg-surface-2 shadow-[3px_3px_oklch(0_0_0_/_.55)]">
+              <Swords className="size-6 text-gold" />
+            </div>
+            <div>
+              <h1 className="pixel-title">
+                {modo === "signup" ? "Criar conta" : "Bem-vindo de volta"}
+              </h1>
+              <p className="pixel-sub">Sua caçada continua mesmo com o jogo fechado.</p>
+            </div>
+          </div>
+
+          <form onSubmit={enviar} className="space-y-3">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="seu@email.com"
+              className="pixel-input"
+            />
+            <input
+              type="password"
+              required
+              minLength={6}
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              placeholder="Senha (mín. 6 caracteres)"
+              className="pixel-input"
+            />
+            <button type="submit" disabled={carregando} className="pixel-button">
+              {carregando ? "Aguarde..." : modo === "signup" ? "Criar conta" : "Entrar"}
+            </button>
+          </form>
+
+          <div className="pixel-divider">ou</div>
+
+          <button type="button" onClick={google} className="pixel-button pixel-button-ghost">
+            Continuar com Google
           </button>
-        </form>
 
-        <button
-          onClick={google}
-          className="mt-3 w-full rounded-xl border border-border bg-surface-2 px-4 py-3 text-sm font-semibold transition hover:brightness-110"
-        >
-          Continuar com Google
-        </button>
-
-        <button
-          onClick={() => setModo(modo === "signup" ? "login" : "signup")}
-          className="mt-5 w-full text-xs text-muted-foreground underline"
-        >
-          {modo === "signup" ? "Já tenho conta — entrar" : "Não tenho conta — criar agora"}
-        </button>
+          <button
+            type="button"
+            onClick={() => setModo(modo === "signup" ? "login" : "signup")}
+            className="pixel-link mt-5 block w-full text-center"
+          >
+            {modo === "signup" ? "Já tenho conta — entrar" : "Não tenho conta — criar agora"}
+          </button>
+        </div>
       </div>
     </main>
   );

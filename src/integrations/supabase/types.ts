@@ -176,27 +176,74 @@ export type Database = {
           },
         ]
       }
+      player_progress: {
+        Row: {
+          fase_maxima_desbloqueada: number
+          fase_selecionada_atual: number | null
+          region_id: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          fase_maxima_desbloqueada?: number
+          fase_selecionada_atual?: number | null
+          region_id: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          fase_maxima_desbloqueada?: number
+          fase_selecionada_atual?: number | null
+          region_id?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           auto_captura: boolean
+          bosses_defeated: number[]
           criado_em: string
+          current_floor: number
+          fase_repetir: number | null
           id: string
           nome_treinador: string
+          repetir_fase: boolean
           starter_escolhido: boolean
+          unlocked_floors: number[]
         }
         Insert: {
           auto_captura?: boolean
+          bosses_defeated?: number[]
           criado_em?: string
+          current_floor?: number
+          fase_repetir?: number | null
           id: string
           nome_treinador: string
+          repetir_fase?: boolean
           starter_escolhido?: boolean
+          unlocked_floors?: number[]
         }
         Update: {
           auto_captura?: boolean
+          bosses_defeated?: number[]
           criado_em?: string
+          current_floor?: number
+          fase_repetir?: number | null
           id?: string
           nome_treinador?: string
+          repetir_fase?: boolean
           starter_escolhido?: boolean
+          unlocked_floors?: number[]
         }
         Relationships: []
       }

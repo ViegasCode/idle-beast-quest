@@ -101,7 +101,6 @@
 
 @layer components {
   .game-shell { min-height: 100vh; background: var(--background); }
-  .nav-menu-toggle, .nav-backdrop { display: none; }
   .game-topbar { position: fixed; inset: 0 0 auto 168px; z-index: 50; height: 58px; display: flex; align-items: center; padding: 0 16px; border-bottom: 3px solid oklch(0.09 0.01 90); background: linear-gradient(180deg, oklch(0.2 0.02 90), oklch(0.135 0.012 90)); box-shadow: inset 0 -1px var(--border), 0 5px 16px oklch(0 0 0 / .45); }
   .game-wordmark { display: flex; align-items: center; gap: 8px; color: var(--gold); font-family: var(--font-display); font-size: 18px; text-transform: uppercase; text-shadow: 2px 2px oklch(0 0 0); }
   .resource-chip { display: flex; height: 34px; min-width: 94px; align-items: center; justify-content: center; gap: 8px; border: 2px solid var(--border); background: oklch(0.1 0.01 90); padding: 0 10px; box-shadow: inset 0 0 0 1px oklch(0.5 0.03 85 / .2), 2px 2px oklch(0 0 0 / .5); font-family: var(--font-display); font-size: 12px; }
@@ -173,7 +172,7 @@
 @keyframes damagePop { 0% { transform: translateY(10px) scale(.5); opacity: 0; } 35% { transform: translateY(-10px) scale(1.25); opacity: 1; } 100% { transform: translateY(-28px); opacity: 0; } }
 @keyframes pixelBlink { 50% { opacity: .25; } }
 
-@media (min-width: 900px) and (max-width: 1365px) {
+@media (min-width: 1181px) and (max-width: 1365px) {
   .game-topbar { left: 144px; }
   .game-sidebar { width: 144px; padding-inline: 8px; }
   .sidebar-crest { height: 62px; }
@@ -187,8 +186,7 @@
   .capture-target { min-height: 124px; }
 }
 
-@media (max-width: 899px) {
-  .nav-menu-toggle, .nav-backdrop { display: inline-flex; }
+@media (max-width: 1180px) {
   .game-topbar { left: 0; } .game-sidebar { transform: translateX(-100%); transition: transform .2s ease; } .game-sidebar-open { transform: translateX(0); } .game-main { padding-left: 10px; } .game-board { grid-template-columns: minmax(0, 1fr) 278px; } .fighter-sprite { width: 140px; height: 140px; }
   .battle-statusbar { grid-template-columns: .75fr .85fr 1fr 1.35fr; }
   .battle-statusbar > div { padding-inline: 8px; }

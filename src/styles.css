@@ -112,10 +112,10 @@
   .game-nav-item:hover { border-color: var(--gold); color: var(--gold); transform: translateX(2px); }
   .game-nav-item-active { border-color: var(--gold); background: linear-gradient(180deg, oklch(0.69 0.15 82), oklch(0.48 0.11 72)); color: var(--accent-foreground); box-shadow: inset 0 0 0 2px oklch(0.9 0.14 90 / .55), 0 0 12px oklch(0.75 0.15 85 / .4); }
   .game-nav-item-active svg { color: var(--accent-foreground); }
-  .game-main { min-height: 100vh; padding: 68px 10px 12px 178px; }
+  .game-main { width: 100%; max-width: 1920px; min-height: 100vh; margin-inline: auto; padding: 68px 10px 12px 178px; }
   .region-strip { height: 82px; display: flex; align-items: stretch; gap: 6px; border: 2px solid var(--border); background: oklch(0.12 0.012 90); padding: 6px; box-shadow: inset 0 0 0 2px oklch(0 0 0 / .5); }
-  .region-list { display: flex; flex: 1; gap: 6px; overflow-x: auto; scrollbar-width: none; }
-  .region-tile { position: relative; height: 66px; min-width: 138px; justify-content: flex-start; overflow: hidden; border: 2px solid var(--border); padding: 6px; color: var(--foreground); background: var(--surface); border-radius: 1px; }
+  .region-list { display: grid; flex: 1; grid-auto-flow: column; grid-auto-columns: minmax(138px, 1fr); gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .region-tile { position: relative; width: 100%; height: 66px; min-width: 138px; justify-content: flex-start; overflow: hidden; border: 2px solid var(--border); padding: 6px; color: var(--foreground); background: var(--surface); border-radius: 1px; }
   .region-tile .region-art { display: grid; width: 48px; align-self: stretch; place-items: center; background: linear-gradient(140deg, oklch(0.35 0.12 145), oklch(0.18 0.05 145)); }
   .region-biome-1 .region-art { background: linear-gradient(140deg, oklch(0.48 0.17 35), oklch(0.2 0.05 25)); } .region-biome-2 .region-art { background: linear-gradient(140deg, oklch(0.67 0.14 85), oklch(0.3 0.08 55)); } .region-biome-3 .region-art { background: linear-gradient(140deg, oklch(0.38 0.13 290), oklch(0.15 0.05 280)); }
   .region-tile > span:last-child { display: grid; text-align: left; line-height: 1.1; white-space: normal; }
@@ -126,14 +126,14 @@
   .battle-statusbar > div { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-right: 1px solid var(--border); min-width: 0; }
   .battle-statusbar svg { width: 18px; color: var(--gold); } .battle-statusbar span { min-width: 0; display: grid; line-height: 1.05; } .battle-statusbar small { color: var(--muted-foreground); font-size: 8px; } .battle-statusbar b { overflow: hidden; text-overflow: ellipsis; font-size: 12px; white-space: nowrap; }
   .status-good { color: var(--primary); } .status-danger { color: var(--destructive); }
-  .game-board { display: grid; grid-template-columns: minmax(0, 1fr) 300px; min-height: calc(100vh - 218px); border: 2px solid oklch(0.08 0.01 90); border-top: 0; box-shadow: 0 8px 24px oklch(0 0 0 / .5); }
+  .game-board { display: grid; grid-template-columns: minmax(0, 1fr) clamp(286px, 20vw, 330px); min-height: calc(100vh - 218px); border: 2px solid oklch(0.08 0.01 90); border-top: 0; box-shadow: 0 8px 24px oklch(0 0 0 / .5); }
   .battle-column { min-width: 0; border-right: 3px solid oklch(0.08 0.01 90); background: oklch(0.11 0.01 90); }
   .panel-heading { height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px; border-bottom: 2px solid var(--border); background: linear-gradient(180deg, oklch(0.25 0.025 88), oklch(0.15 0.012 90)); font-family: var(--font-display); font-size: 11px; }
   .panel-heading > span { display: flex; align-items: center; gap: 7px; } .panel-heading svg { width: 16px; color: var(--gold); }
   .battle-heading { justify-content: flex-start; } .phase-button { height: 28px; margin-left: auto; border: 1px solid var(--border); font-family: var(--font-display); font-size: 10px; }
   .phase-progress { width: 110px; height: 8px; border: 1px solid oklch(0 0 0); background: var(--muted); } .phase-progress span { display: block; height: 100%; background: var(--primary); }
   .phase-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 7px; border-bottom: 1px solid var(--border); background: var(--surface); } .phase-picker button { min-width: 34px; border-radius: 1px; font-family: var(--font-display); } .phase-picker label { display: flex; align-items: center; gap: 5px; margin-left: auto; font-size: 10px; }
-  .battle-stage { isolation: isolate; position: relative; height: clamp(300px, 45vh, 470px); overflow: hidden; background-size: cover; background-position: center; image-rendering: pixelated; }
+  .battle-stage { isolation: isolate; position: relative; height: clamp(310px, 45vh, 500px); overflow: hidden; background-size: cover; background-position: center; image-rendering: pixelated; }
   .battle-vignette { position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, oklch(0 0 0 / .28), transparent 35% 65%, oklch(0 0 0 / .28)), linear-gradient(0deg, oklch(0 0 0 / .28), transparent 35%); }
   .battle-auto { position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 7px; border: 2px solid var(--primary); background: oklch(0.12 0.03 145 / .92); padding: 6px 9px; color: var(--primary); font-family: var(--font-display); font-size: 9px; box-shadow: 0 0 10px oklch(0.72 0.19 145 / .5); }
   .battle-auto span { width: 7px; height: 7px; background: var(--primary); box-shadow: 0 0 7px var(--primary); animation: pixelBlink 1s steps(2) infinite; }
@@ -141,7 +141,7 @@
   .fighter-plate { position: absolute; top: 14%; width: min(240px, 90%); padding: 6px 8px; border: 2px solid oklch(0.08 0.01 90); background: oklch(0.11 0.015 90 / .94); box-shadow: inset 0 0 0 1px var(--border), 3px 3px oklch(0 0 0 / .55); } .fighter-enemy .fighter-plate { right: 0; }
   .fighter-title { display: flex; justify-content: space-between; gap: 8px; font-family: var(--font-display); font-size: 10px; } .fighter-title b { color: var(--muted-foreground); font-size: 9px; } .fighter-plate small { display: block; margin-top: 2px; text-align: right; font-size: 9px; }
   .pixel-meter { height: 8px; border: 2px solid oklch(0.05 0 0); background: oklch(0.25 0.02 30); box-shadow: inset 0 0 0 1px oklch(1 0 0 / .1); } .pixel-meter span { display: block; height: 100%; transition: width .35s steps(8); } .pixel-meter-hp span { background: var(--primary); } .pixel-meter-exp span { background: var(--crystal); }
-  .fighter-sprite { position: absolute; bottom: 13%; width: 170px; height: 170px; display: grid; place-items: center; filter: drop-shadow(7px 9px 2px oklch(0 0 0 / .55)); } .fighter-player .fighter-sprite { left: 11%; } .fighter-enemy .fighter-sprite { right: 10%; } .fighter-sprite img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; } .fighter-sprite.is-attacking { animation: fighterStrike .35s steps(3); }
+  .fighter-sprite { position: absolute; bottom: 13%; width: clamp(145px, 12vw, 190px); height: clamp(145px, 12vw, 190px); display: grid; place-items: center; filter: drop-shadow(7px 9px 2px oklch(0 0 0 / .55)); } .fighter-player .fighter-sprite { left: 11%; } .fighter-enemy .fighter-sprite { right: 10%; } .fighter-sprite img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; } .fighter-sprite.is-attacking { animation: fighterStrike .35s steps(3); }
   .damage-number { position: absolute; right: -15px; top: 18px; color: var(--destructive); font-family: var(--font-display); font-size: 30px; text-shadow: 3px 3px oklch(0 0 0); animation: damagePop .8s steps(5); } .damage-player { right: auto; left: -10px; }
   .catchable-mark { position: absolute; bottom: -18px; display: flex; align-items: center; gap: 4px; color: var(--gold); font-family: var(--font-display); font-size: 8px; text-shadow: 2px 2px oklch(0 0 0); } .catchable-mark svg { width: 12px; }
   .battle-center-log { position: absolute; left: 50%; bottom: 13%; transform: translateX(-50%); display: grid; justify-items: center; gap: 3px; width: 44%; text-align: center; text-shadow: 2px 2px oklch(0 0 0); } .battle-center-log strong { color: var(--gold); font-family: var(--font-display); font-size: 12px; } .battle-center-log span { display: flex; align-items: center; gap: 4px; color: var(--foreground); font-size: 10px; } .battle-center-log svg { width: 12px; }
@@ -171,8 +171,38 @@
 @keyframes damagePop { 0% { transform: translateY(10px) scale(.5); opacity: 0; } 35% { transform: translateY(-10px) scale(1.25); opacity: 1; } 100% { transform: translateY(-28px); opacity: 0; } }
 @keyframes pixelBlink { 50% { opacity: .25; } }
 
-@media (max-width: 1024px) {
-  .game-topbar { left: 0; } .game-sidebar { transform: translateX(-100%); transition: transform .2s ease; } .game-sidebar-open { transform: translateX(0); } .game-main { padding-left: 10px; } .game-board { grid-template-columns: minmax(0, 1fr) 275px; } .fighter-sprite { width: 140px; height: 140px; }
+@media (min-width: 1181px) and (max-width: 1365px) {
+  .game-topbar { left: 144px; }
+  .game-sidebar { width: 144px; padding-inline: 8px; }
+  .sidebar-crest { height: 62px; }
+  .game-nav-item { height: 49px; gap: 8px; padding-inline: 9px; font-size: 10px; }
+  .game-nav-item svg { width: 21px; height: 21px; }
+  .game-main { padding-left: 154px; }
+  .game-board { grid-template-columns: minmax(0, 1fr) 280px; }
+  .team-portrait { width: 62px; height: 62px; }
+  .team-card { height: 94px; gap: 6px; padding: 6px; }
+  .capture-portrait { width: 94px; height: 94px; }
+  .capture-target { min-height: 124px; }
+}
+
+@media (max-width: 1180px) {
+  .game-topbar { left: 0; } .game-sidebar { transform: translateX(-100%); transition: transform .2s ease; } .game-sidebar-open { transform: translateX(0); } .game-main { padding-left: 10px; } .game-board { grid-template-columns: minmax(0, 1fr) 278px; } .fighter-sprite { width: 140px; height: 140px; }
+  .battle-statusbar { grid-template-columns: .75fr .85fr 1fr 1.35fr; }
+  .battle-statusbar > div { padding-inline: 8px; }
+  .team-portrait { width: 64px; height: 64px; }
+  .team-card { height: 94px; }
+}
+
+@media (min-width: 1680px) {
+  .game-main { padding-right: 18px; padding-left: 186px; }
+  .game-board { grid-template-columns: minmax(0, 1fr) 330px; }
+  .region-strip { height: 88px; }
+  .region-tile, .region-arrow { height: 72px; }
+  .region-tile b { font-size: 11px; }
+  .battle-statusbar { height: 52px; }
+  .battle-statusbar b { font-size: 13px; }
+  .team-card { height: 108px; }
+  .team-portrait { width: 82px; height: 82px; }
 }
 
 @media (max-width: 760px) {

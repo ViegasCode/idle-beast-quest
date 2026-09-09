@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Activity, ChevronLeft, ChevronRight, Clock3, Crosshair, PackageOpen, Repeat2, Settings2, Shield, Sparkles, Swords, Target, Trophy, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { CombatArena } from "@/components/CombatArena";
@@ -40,6 +40,7 @@ function Combate() {
   const [resumoOffline, setResumoOffline] = useState<any>(null);
   const [mostrouResumo, setMostrouResumo] = useState(false);
   const [showPhases, setShowPhases] = useState(false);
+  const regionListRef = useRef<HTMLDivElement>(null);
 
   const { data: state, isPending } = useQuery({ queryKey: ["combatState"], queryFn: () => resolver(), refetchInterval: 20_000 });
   const { data: collection } = useQuery({ queryKey: ["collection"], queryFn: () => listar() });
@@ -74,6 +75,10 @@ function Combate() {
       setTeamIds([session.creature_id]);
     }
   }, [session?.creature_id]);
+  useEffect(() => {
+    const activeRegion = regionListRef.current?.querySelector<HTMLElement>(".region-tile.is-active");
+    activeRegion?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [regiao?.id]);
 
   const refresh = () => queryClient.invalidateQueries();
   const captureMutation = useMutation({ mutationFn: (item_id?: number) => capturar({ data: { item_id } }), onSuccess: async (result) => { await refresh(); result.sucesso ? toast.success(`Capturada com ${result.item}!`) : toast.error(`${result.item} usada, mas a criatura escapou.`); }, onError: (error: Error) => toast.error(error.message) });
@@ -108,19 +113,25 @@ function Combate() {
     });
   }
 
+  function scrollRegions(direction: -1 | 1) {
+    const list = regionListRef.current;
+    if (!list) return;
+    list.scrollBy({ left: direction * Math.max(160, list.clientWidth * 0.72), behavior: "smooth" });
+  }
+
   return (
     <div className="game-shell">
       <GameNav treinador={state?.profile?.nome_treinador} total={state?.totalCriaturas} />
       <main className="game-main">
         <section className="region-strip" aria-label="Regiões">
-          <Button variant="ghost" size="icon" className="region-arrow" aria-label="Região anterior"><ChevronLeft /></Button>
-          <div className="region-list">
+          <Button variant="ghost" size="icon" className="region-arrow" aria-label="Mostrar regiões anteriores" onClick={() => scrollRegions(-1)}><ChevronLeft /></Button>
+          <div className="region-list" ref={regionListRef}>
             {(state?.regions ?? []).map((region: any, index: number) => {
               const active = region.id === regiao?.id;
               return <Button key={region.id} variant="ghost" disabled={active || regionMutation.isPending} onClick={() => regionMutation.mutate(region.id)} className={`region-tile region-biome-${index % 4} ${active ? "is-active" : ""}`}><span className="region-art"><Sparkles /></span><span><b>{region.nome}</b><small>Nv. {region.nivel_minimo}–{region.nivel_maximo}</small></span></Button>;
             })}
           </div>
-          <Button variant="ghost" size="icon" className="region-arrow" aria-label="Próxima região"><ChevronRight /></Button>
+          <Button variant="ghost" size="icon" className="region-arrow" aria-label="Mostrar próximas regiões" onClick={() => scrollRegions(1)}><ChevronRight /></Button>
         </section>
 
         <section className="battle-statusbar">

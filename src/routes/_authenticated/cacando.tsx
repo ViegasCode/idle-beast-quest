@@ -2,43 +2,25 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
+import { Activity, ChevronLeft, ChevronRight, Clock3, Crosshair, PackageOpen, Repeat2, Settings2, Shield, Sparkles, Swords, Target, Trophy, Zap } from "lucide-react";
 import { toast } from "sonner";
-import {
-  changeRegion,
-  coletarResumo,
-  getCombatState,
-  setAutoCaptura,
-  tentarCaptura,
-  listCollection,
-  setActiveCreature,
-  setSelectedPhase,
-  setRepeatPhase,
-} from "@/lib/game.functions";
-import { CreatureCard, type CreatureRow } from "@/components/CreatureCard";
 import { CombatArena } from "@/components/CombatArena";
 import { GameNav } from "@/components/GameNav";
-import { formatDuration, rarityClass } from "@/lib/game";
+import { Button } from "@/components/ui/button";
+import { changeRegion, coletarResumo, getCombatState, listCollection, setActiveCreature, setAutoCaptura, setRepeatPhase, setSelectedPhase, tentarCaptura } from "@/lib/game.functions";
+import { formatDuration } from "@/lib/game";
 import { CAP_HORAS, INIMIGOS_POR_FASE, type Combatente, type Inimigo } from "@/lib/combat";
 import { BOSS_KEY_ITEM_ID, getBossPhaseNumber } from "@/lib/progression";
 
 export const Route = createFileRoute("/_authenticated/cacando")({
-  head: () => ({
-    meta: [
-      { title: "Combate · Achnuba" },
-      {
-        name: "description",
-        content:
-          "Combate PvE idle automático: sua criatura enfrenta inimigos por fases, ganha exp, itens de captura e novas criaturas.",
-      },
-      { property: "og:title", content: "Combate · Achnuba" },
-      {
-        property: "og:description",
-        content: "Auto-batalhas visíveis por fases, com progresso offline de até 12 horas.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: () => ({ meta: [
+    { title: "Batalha automática · Achnuba" },
+    { name: "description", content: "Arena de combate PvE idle por fases de Achnuba." },
+    { property: "og:title", content: "Batalha automática · Achnuba" },
+    { property: "og:description", content: "Combates visíveis, capturas e progresso offline." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
+  ] }),
   component: Combate,
 });
 
@@ -52,556 +34,153 @@ function Combate() {
   const trocarRegiao = useServerFn(changeRegion);
   const setPhaseFn = useServerFn(setSelectedPhase);
   const repeatPhaseFn = useServerFn(setRepeatPhase);
-
+  const listar = useServerFn(listCollection);
+  const setLeader = useServerFn(setActiveCreature);
   const [agora, setAgora] = useState(() => Date.now());
   const [resumoOffline, setResumoOffline] = useState<any>(null);
   const [mostrouResumo, setMostrouResumo] = useState(false);
+  const [showPhases, setShowPhases] = useState(false);
 
-  const { data: state, isPending } = useQuery({
-    queryKey: ["combatState"],
-    queryFn: () => resolver(),
-    refetchInterval: 20_000,
-  });
+  const { data: state, isPending } = useQuery({ queryKey: ["combatState"], queryFn: () => resolver(), refetchInterval: 20_000 });
+  const { data: collection } = useQuery({ queryKey: ["collection"], queryFn: () => listar() });
 
+  const session = state?.session as any;
+  const regiao = session?.regions;
+  const jogador = state?.combatente as Combatente | undefined;
+  const fila = (state?.inimigos ?? []) as Inimigo[];
+  const inventario = state?.inventario ?? [];
+  const catalogo = state?.catalogo ?? [];
+  const pending = state?.pending as any;
+
+  const [teamIds, setTeamIds] = useState<string[]>([]);
   useEffect(() => {
-    const t = setInterval(() => setAgora(Date.now()), 1000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setAgora(Date.now()), 1000);
+    return () => clearInterval(timer);
   }, []);
-
   useEffect(() => {
-    if (!isPending && state && (!state.profile || !state.profile.starter_escolhido)) {
-      navigate({ to: "/inicial", replace: true });
-    }
+    if (!isPending && state && (!state.profile || !state.profile.starter_escolhido)) navigate({ to: "/inicial", replace: true });
   }, [state, isPending, navigate]);
-
   useEffect(() => {
     if (mostrouResumo || !state?.resumo) return;
     if (state.resumo.segundos > 180 && state.resumo.batalhas > 0) setResumoOffline(state.resumo);
     setMostrouResumo(true);
   }, [state, mostrouResumo]);
-
-  const capturaMutation = useMutation({
-    mutationFn: (item_id?: number | undefined) => capturar({ data: { item_id } }),
-    onSuccess: async (res) => {
-      await queryClient.invalidateQueries();
-      if (res.sucesso) toast.success(`Capturada com ${res.item}!`);
-      else toast.error(`${res.item} usada, mas a criatura escapou.`);
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const autoMutation = useMutation({
-    mutationFn: (ativo: boolean) => alternarAuto({ data: { ativo } }),
-    onSuccess: async (res) => {
-      await queryClient.invalidateQueries({ queryKey: ["combatState"] });
-      toast.success(res.ativo ? "Captura automática ativada." : "Captura automática desativada.");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const coletaMutation = useMutation({
-    mutationFn: () => coletar(),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["combatState"] });
-      toast.success("Resumo coletado. Contadores reiniciados.");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const selectPhaseMutation = useMutation({
-    mutationFn: (fase: number) => setPhaseFn({ data: { fase } }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["combatState"] });
-      toast.success("Fase selecionada.");
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao selecionar fase"),
-  });
-
-  const repeatMutation = useMutation({
-    mutationFn: (payload: { ativo: boolean; fase?: number | null }) => repeatPhaseFn({ data: payload }),
-    onSuccess: async (res: any) => {
-      await queryClient.invalidateQueries({ queryKey: ["combatState"] });
-      toast.success(res.ativo ? `Repetindo fase ${res.fase}` : "Repetição de fase desativada");
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao alternar repetição"),
-  });
-
-  const regiaoMutation = useMutation({
-    mutationFn: (region_id: number) => trocarRegiao({ data: { region_id } }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["combatState"] });
-      toast.success("Região alterada. Você volta para a Fase 1.");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const session = state?.session as any;
-  const regiao = session?.regions;
-  const criatura = state?.criatura as unknown as CreatureRow | undefined;
-  const jogador = state?.combatente as Combatente | undefined;
-  const fila = (state?.inimigos ?? []) as Inimigo[];
-  const catalogo = state?.catalogo ?? [];
-  const inventario = state?.inventario ?? [];
-  const pending = state?.pending as any;
-  const bossPhaseNumber = getBossPhaseNumber(Number(regiao?.fases ?? 8));
-  const hasBossKey = (inventario.find((item: any) => item.item_id === BOSS_KEY_ITEM_ID)?.quantidade ?? 0) > 0;
-  const selectablePhases = Array.from({ length: regiao?.fases ?? 8 }, (_, index) => index + 1);
-  selectablePhases.push(bossPhaseNumber);
-
-  const desdeColeta = session ? agora - new Date(session.ultima_coleta_em).getTime() : 0;
-  const horas = Math.max(desdeColeta / 3_600_000, 1 / 60);
-  const killsHora = session ? Math.round((session.kills_total ?? 0) / horas) : 0;
-  const pressao = Number(session?.pressao ?? 0);
-  const statusCombate =
-    pressao >= 0.6 ? "Sob pressão" : pressao >= 0.3 ? "Combate equilibrado" : "Dominando";
-  const totalItens = inventario.reduce((s: number, i: any) => s + i.quantidade, 0);
-  const restaPending = pending ? new Date(pending.expira_em).getTime() - agora : 0;
-
-  // Time selection (até 3) — persistido em localStorage por enquanto
-  const [teamIds, setTeamIds] = useState<string[]>(() => {
-    try {
-      const v = localStorage.getItem("team");
-      return v ? JSON.parse(v) : session?.creature_id ? [session.creature_id] : [];
-    } catch {
-      return session?.creature_id ? [session.creature_id] : [];
-    }
-  });
-  const [choosing, setChoosing] = useState(false);
-
-  const listar = useServerFn(listCollection);
-  const { data: collection } = useQuery({ queryKey: ["collection"], queryFn: () => listar() });
-
   useEffect(() => {
-    // manter líder sincronizado com session.creature_id se não houver time salvo
-    if ((!teamIds || teamIds.length === 0) && session?.creature_id) setTeamIds([session.creature_id]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!session?.creature_id) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem("team") ?? "[]") as string[];
+      setTeamIds(saved.length ? saved.slice(0, 3) : [session.creature_id]);
+    } catch {
+      setTeamIds([session.creature_id]);
+    }
   }, [session?.creature_id]);
 
-  function toggleSelect(id: string) {
-    setTeamIds((prev) => {
-      const has = prev.includes(id);
-      let next = has ? prev.filter((x) => x !== id) : [...prev, id].slice(0, 3);
+  const refresh = () => queryClient.invalidateQueries();
+  const captureMutation = useMutation({ mutationFn: (item_id?: number) => capturar({ data: { item_id } }), onSuccess: async (result) => { await refresh(); result.sucesso ? toast.success(`Capturada com ${result.item}!`) : toast.error(`${result.item} usada, mas a criatura escapou.`); }, onError: (error: Error) => toast.error(error.message) });
+  const autoMutation = useMutation({ mutationFn: (ativo: boolean) => alternarAuto({ data: { ativo } }), onSuccess: async () => { await refresh(); toast.success("Preferência de captura atualizada."); } });
+  const summaryMutation = useMutation({ mutationFn: () => coletar(), onSuccess: async () => { await refresh(); toast.success("Recompensas registradas."); } });
+  const regionMutation = useMutation({ mutationFn: (region_id: number) => trocarRegiao({ data: { region_id } }), onSuccess: async () => { await refresh(); toast.success("Região alterada."); }, onError: (error: Error) => toast.error(error.message) });
+  const phaseMutation = useMutation({ mutationFn: (fase: number) => setPhaseFn({ data: { fase } }), onSuccess: refresh, onError: (error: Error) => toast.error(error.message) });
+  const repeatMutation = useMutation({ mutationFn: (payload: { ativo: boolean; fase?: number | null }) => repeatPhaseFn({ data: payload }), onSuccess: refresh });
+  const leaderMutation = useMutation({ mutationFn: (creature_id: string) => setLeader({ data: { creature_id } }), onSuccess: async () => { await refresh(); toast.success("Líder atualizado."); } });
+
+  if (isPending || !session || !jogador) return <div className="game-loading"><Shield /><span>Preparando a arena...</span></div>;
+
+  const collectionRows = collection ?? [];
+  const members = teamIds.map((id) => collectionRows.find((creature: any) => creature.id === id)).filter(Boolean) as any[];
+  const combatTeam: Combatente[] = members.map((creature) => creature.id === session.creature_id ? jogador : ({ nome: creature.species?.nome ?? "Criatura", nivel: creature.nivel, tipos: [creature.species?.tipo_primario ?? null, creature.species?.tipo_secundario ?? null], sprite_url: creature.species?.sprite_url ?? null, hpMax: jogador.hpMax, ataque: Math.max(1, Math.round(jogador.ataque * .75)), defesa: jogador.defesa, velocidade: jogador.velocidade, is_shiny: creature.is_shiny }));
+  const desdeColeta = agora - new Date(session.ultima_coleta_em).getTime();
+  const killsHora = Math.round((session.kills_total ?? 0) / Math.max(desdeColeta / 3_600_000, 1 / 60));
+  const pressao = Number(session.pressao ?? 0);
+  const status = pressao >= .6 ? "Sob pressão" : pressao >= .3 ? "Equilibrado" : "Dominando";
+  const totalItens = inventario.reduce((sum: number, item: any) => sum + item.quantidade, 0);
+  const pendingLeft = pending ? new Date(pending.expira_em).getTime() - agora : 0;
+  const phaseTotal = Number(regiao?.fases ?? 8);
+  const bossPhase = getBossPhaseNumber(phaseTotal);
+  const hasBossKey = (inventario.find((item: any) => item.item_id === BOSS_KEY_ITEM_ID)?.quantidade ?? 0) > 0;
+  const phases = [...Array.from({ length: phaseTotal }, (_, index) => index + 1), bossPhase];
+
+  function setTeam(id: string) {
+    setTeamIds((current) => {
+      const next = current.includes(id) ? current.filter((value) => value !== id) : [...current, id].slice(-3);
       localStorage.setItem("team", JSON.stringify(next));
       return next;
     });
   }
 
-  const saveLeader = useMutation({
-    mutationFn: (creature_id: string) => setActiveCreature({ data: { creature_id } }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["combatState"] });
-      toast.success("Líder do time atualizado.");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   return (
-    <>
+    <div className="game-shell">
       <GameNav treinador={state?.profile?.nome_treinador} total={state?.totalCriaturas} />
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        {isPending || !session || !jogador ? (
-          <p className="text-sm text-muted-foreground">Entrando em combate...</p>
-        ) : (
-          <>
-            <section className="panel grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Abates/hora</p>
-                <p className="font-display text-xl font-extrabold tabular-nums">{killsHora}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Status</p>
-                <p
-                  className={`text-sm font-bold ${
-                    pressao >= 0.6 ? "text-destructive" : pressao >= 0.3 ? "text-accent" : "text-primary"
-                  }`}
-                >
-                  {statusCombate}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Desde a última coleta
-                </p>
-                <p className="text-sm font-bold tabular-nums">{formatDuration(desdeColeta)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Ganhos</p>
-                <p className="text-sm font-bold tabular-nums">
-                  +{Number(session.exp_total ?? 0).toLocaleString("pt-BR")} exp ·{" "}
-                  {session.kills_total ?? 0} kills
-                </p>
-              </div>
-            </section>
+      <main className="game-main">
+        <section className="region-strip" aria-label="Regiões">
+          <Button variant="ghost" size="icon" className="region-arrow" aria-label="Região anterior"><ChevronLeft /></Button>
+          <div className="region-list">
+            {(state?.regions ?? []).map((region: any, index: number) => {
+              const active = region.id === regiao?.id;
+              return <Button key={region.id} variant="ghost" disabled={active || regionMutation.isPending} onClick={() => regionMutation.mutate(region.id)} className={`region-tile region-biome-${index % 4} ${active ? "is-active" : ""}`}><span className="region-art"><Sparkles /></span><span><b>{region.nome}</b><small>Nv. {region.nivel_minimo}–{region.nivel_maximo}</small></span></Button>;
+            })}
+          </div>
+          <Button variant="ghost" size="icon" className="region-arrow" aria-label="Próxima região"><ChevronRight /></Button>
+        </section>
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-              <section className="panel p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-primary">
-                      {regiao?.nome}
-                    </p>
-                    <h1 className="text-2xl font-extrabold">
-                      Fase {session.fase}/{regiao?.fases ?? 8}
-                    </h1>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {session.fase_kills}/{INIMIGOS_POR_FASE} inimigos derrotados nesta fase
-                    </p>
-                  </div>
-                  <span className="rounded-full border border-border px-3 py-1 text-xs font-semibold">
-                    Nv. {regiao?.nivel_minimo}–{regiao?.nivel_maximo}
-                  </span>
-                </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-[width]"
-                    style={{ width: `${((session.fase_kills ?? 0) / INIMIGOS_POR_FASE) * 100}%` }}
-                  />
-                </div>
+        <section className="battle-statusbar">
+          <div><Activity /><span><small>ABATES/HORA</small><b>{killsHora}</b></span></div>
+          <div><Shield /><span><small>STATUS</small><b className={pressao >= .6 ? "status-danger" : "status-good"}>{status}</b></span></div>
+          <div><Clock3 /><span><small>ÚLTIMA COLETA</small><b>{formatDuration(desdeColeta)}</b></span></div>
+          <div><Trophy /><span><small>GANHOS DA SESSÃO</small><b>+{Number(session.exp_total ?? 0).toLocaleString("pt-BR")} EXP · {session.kills_total ?? 0} KILLS</b></span></div>
+        </section>
 
-                <div className="mt-4">
-                  <p className="text-xs font-bold text-muted-foreground">Seleção de Fase</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    {selectablePhases.map((num) => {
-                      const selected = session.fase === num;
-                      const isBoss = num === bossPhaseNumber;
-                      const disabled = isBoss && !hasBossKey;
-                      return (
-                        <button
-                          key={num}
-                          onClick={() => {
-                            if (disabled) return;
-                            selectPhaseMutation.mutate(num);
-                          }}
-                          disabled={disabled}
-                          className={`rounded-xl px-3 py-2 text-xs font-bold transition ${
-                            selected ? 'bg-primary text-primary-foreground' : 'border border-border bg-surface-2/60'
-                          } ${isBoss ? 'ring-1 ring-amber-400/80' : ''} ${disabled ? 'cursor-not-allowed opacity-45' : ''}`}
-                        >
-                          {isBoss ? `Boss ${num}` : `F${num}`}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-3 flex items-center gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(state?.profile?.repetir_fase)}
-                        onChange={(e) => {
-                          const ativo = e.target.checked;
-                          // when enabling, send the currently selected phase (session.fase)
-                          repeatMutation.mutate({ ativo, fase: ativo ? session?.fase ?? 1 : null });
-                        }}
-                        className="size-4 accent-primary"
-                      />
-                      <span className="text-sm font-bold">Repetir fase selecionada</span>
-                    </label>
-                    <span className="text-xs text-muted-foreground">(Selecione uma fase acima e ative para farm em loop)</span>
-                  </div>
-                </div>
-
-                <div className="mt-5">
-                  {
-                    // construir representação simples do time a partir da coleção
-                  }
-                  <CombatArena
-                    jogador={jogador}
-                    fila={fila}
-                    indiceInicial={session.fase_kills ?? 0}
-                    regiao={regiao}
-                    time={(teamIds || [])
-                      .map((id) => (collection ?? []).find((x: any) => x.id === id))
-                      .filter(Boolean)
-                      .map((c: any) => ({
-                        nome: c.species?.nome ?? "Criatura",
-                        nivel: c.nivel,
-                        tipos: [c.species?.tipo_primario ?? null, c.species?.tipo_secundario ?? null],
-                        sprite_url: c.species?.sprite_url ?? null,
-                        hpMax: 10,
-                        ataque: 1,
-                        defesa: 1,
-                        velocidade: 1,
-                        is_shiny: c.is_shiny,
-                      }))}
-                  />
-                </div>
-
-                {pending && restaPending > 0 && (
-                  <div className="mt-5 rounded-2xl border border-accent/60 bg-accent/10 p-4">
-                    <p className="text-xs font-bold uppercase tracking-widest text-accent">
-                      Criatura capturável
-                    </p>
-                    <div className="mt-2 flex items-center gap-3">
-                      {pending.species?.sprite_url ? (
-                        <img src={pending.species.sprite_url} alt={pending.species.nome} className="size-12" />
-                      ) : null}
-                      <div className="flex-1">
-                        <p className="font-bold">
-                          {pending.species?.nome ?? "Criatura"} · Nv. {pending.nivel}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          Fugindo em {Math.ceil(restaPending / 1000)}s
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => capturaMutation.mutate(undefined)}
-                        disabled={capturaMutation.isPending || totalItens === 0}
-                        className="rounded-xl bg-accent px-4 py-2 text-xs font-extrabold uppercase text-accent-foreground disabled:opacity-50"
-                      >
-                        {totalItens === 0 ? "Sem itens" : "Capturar"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => coletaMutation.mutate()}
-                  disabled={coletaMutation.isPending}
-                  className="mt-5 w-full rounded-xl border border-border px-5 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground transition hover:text-foreground disabled:opacity-60"
-                >
-                  Coletar resumo e zerar contadores
-                </button>
-                <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                  Todo o combate é calculado no servidor pelo tempo real decorrido — até {CAP_HORAS}h
-                  com a aba fechada.
-                </p>
-              </section>
-
-              <aside className="space-y-4">
-                <div className="panel p-4">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Inventário de captura
-                  </h2>
-                  <div className="mt-3 space-y-2">
-                    {catalogo.map((item: any) => {
-                      const qtd = inventario.find((i: any) => i.item_id === item.id)?.quantidade ?? 0;
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-center gap-3 rounded-xl border border-border bg-surface-2/60 px-3 py-2"
-                        >
-                          <span
-                            className="size-4 shrink-0 rounded-full"
-                            style={{ background: item.cor }}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-bold">{item.nome}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {Math.round(Number(item.taxa_sucesso) * 100)}% de captura ·{" "}
-                              {Math.round(Number(item.chance_drop) * 100)}% de drop
-                            </p>
-                          </div>
-                          <span className="font-display text-lg font-extrabold tabular-nums">{qtd}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="panel p-4">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Configurações
-                  </h2>
-                  <label className="mt-3 flex cursor-pointer items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(state?.profile?.auto_captura)}
-                      onChange={(e) => autoMutation.mutate(e.target.checked)}
-                      className="mt-0.5 size-4 accent-primary"
-                    />
-                    <span className="text-xs">
-                      Usar item de captura automaticamente ao encontrar criatura capturável
-                      <span className="mt-1 block text-[10px] text-muted-foreground">
-                        Usa o melhor item disponível. Desligado, aparece o botão “Capturar”.
-                      </span>
-                    </span>
-                  </label>
-                </div>
-
-                <div>
-                  <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Time de combate (até 3)
-                  </h2>
-                  <div className="mb-3 flex gap-2">
-                    {teamIds.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma criatura selecionada.</p>}
-                    {teamIds.map((id) => {
-                      const c = (collection ?? []).find((x: any) => x.id === id) as any;
-                      return c ? (
-                        <div key={id} className="w-28">
-                          <CreatureCard creature={c} />
-                        </div>
-                      ) : (
-                        <div key={id} className="w-28 rounded-xl bg-secondary/40 p-3 text-center">Carregando...</div>
-                      );
-                    })}
-                    {Array.from({ length: Math.max(0, 3 - teamIds.length) }).map((_, i) => (
-                      <div key={i} className="w-28 rounded-xl border border-border bg-surface-2/60 p-3 text-center text-xs text-muted-foreground">
-                        Vazio
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setChoosing((v) => !v)}
-                      className="rounded-xl border px-3 py-2 text-xs"
-                    >
-                      {choosing ? "Fechar seleção" : "Montar/Editar time"}
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (teamIds[0]) saveLeader.mutate(teamIds[0]);
-                      }}
-                      disabled={!teamIds[0] || saveLeader.isLoading}
-                      className="rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-60"
-                    >
-                      Salvar líder
-                    </button>
-                  </div>
-
-                  {choosing && (
-                    <div className="mt-3 space-y-2 max-h-64 overflow-y-auto">
-                      {(collection ?? []).map((c: any) => (
-                        <label key={c.id} className="flex items-center gap-3 rounded-xl border px-3 py-2">
-                          <input
-                            type="checkbox"
-                            checked={teamIds.includes(c.id)}
-                            onChange={() => toggleSelect(c.id)}
-                            className="size-4"
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                {c.species?.sprite_url ? (
-                                  <img src={c.species.sprite_url} alt={c.species.nome} className="size-8" />
-                                ) : null}
-                                <div>
-                                  <div className="font-bold text-sm">{c.species?.nome}</div>
-                                  <div className="text-xs text-muted-foreground">Nv. {c.nivel}</div>
-                                </div>
-                              </div>
-                              <div className="text-sm font-semibold">{c.raridade}</div>
-                            </div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="panel p-4">
-                  <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Regiões
-                  </h2>
-                  <div className="mt-3 space-y-2">
-                    {(state?.regions ?? []).map((r: any) => {
-                      const ativa = r.id === regiao?.id;
-                      return (
-                        <button
-                          key={r.id}
-                          disabled={ativa || regiaoMutation.isPending}
-                          onClick={() => regiaoMutation.mutate(r.id)}
-                          className={`w-full rounded-xl border px-3 py-2 text-left text-xs transition ${
-                            ativa
-                              ? "border-primary bg-primary/15"
-                              : "border-border bg-surface-2/60 hover:border-primary/60"
-                          }`}
-                        >
-                          <span className="block font-bold text-foreground">{r.nome}</span>
-                          <span className="text-muted-foreground">
-                            Nv. {r.nivel_minimo}–{r.nivel_maximo} · {r.fases} fases · raridade ×
-                            {Number(r.multiplicador_raridade)}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </aside>
+        <div className="game-board">
+          <section className="battle-column">
+            <div className="panel-heading battle-heading">
+              <span><Swords /> {regiao?.nome}</span>
+              <Button variant="ghost" onClick={() => setShowPhases((value) => !value)} className="phase-button">FASE {session.fase}/{phaseTotal} <ChevronRight /></Button>
+              <div className="phase-progress"><span style={{ width: `${((session.fase_kills ?? 0) / INIMIGOS_POR_FASE) * 100}%` }} /></div>
             </div>
+            {showPhases && <div className="phase-picker">
+              {phases.map((phase) => { const isBoss = phase === bossPhase; const disabled = isBoss && !hasBossKey; return <Button size="sm" variant={phase === session.fase ? "default" : "outline"} disabled={disabled} key={phase} onClick={() => phaseMutation.mutate(phase)}>{isBoss ? "CHEFE" : phase}</Button>; })}
+              <label><input type="checkbox" checked={Boolean(state?.profile?.repetir_fase)} onChange={(event) => repeatMutation.mutate({ ativo: event.target.checked, fase: event.target.checked ? session.fase : null })} /><Repeat2 /> Repetir fase</label>
+            </div>}
+            <CombatArena jogador={jogador} fila={fila} indiceInicial={session.fase_kills ?? 0} regiao={regiao} time={combatTeam} />
 
-            {resumoOffline && (
-              <div className="fixed inset-0 z-40 grid place-items-center bg-background/80 p-4 backdrop-blur">
-                <div className="panel max-h-[85vh] w-full max-w-lg overflow-y-auto p-6">
-                  <h2 className="font-display text-xl font-extrabold">Enquanto você esteve fora</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatDuration(resumoOffline.segundos * 1000)} de combate simulado
-                    {resumoOffline.tempoPerdidoMs > 0
-                      ? ` · limite de ${CAP_HORAS}h atingido, tempo extra não contou`
-                      : ""}
-                  </p>
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <p>
-                      <span className="font-bold">{resumoOffline.batalhas}</span> combates
-                    </p>
-                    <p>
-                      <span className="font-bold">{resumoOffline.kills}</span> abates
-                    </p>
-                    <p>
-                      <span className="font-bold">
-                        +{Number(resumoOffline.exp).toLocaleString("pt-BR")}
-                      </span>{" "}
-                      exp
-                    </p>
-                    <p>
-                      <span className="font-bold">{resumoOffline.derrotas}</span> recuos
-                    </p>
-                  </div>
-                  <div className="mt-4 text-xs text-muted-foreground">
-                    <p className="font-bold text-foreground">Itens de captura ganhos</p>
-                    {resumoOffline.itens.length ? (
-                      <ul className="mt-1 space-y-0.5">
-                        {resumoOffline.itens.map((i: any) => (
-                          <li key={i.item_id}>
-                            +{i.qtd} {i.nome}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-1">Nenhum item dropou nesse período.</p>
-                    )}
-                    {resumoOffline.capturasFalhadas > 0 && (
-                      <p className="mt-2">
-                        {resumoOffline.capturasFalhadas} tentativa(s) de captura falharam.
-                      </p>
-                    )}
-                    {resumoOffline.perdidasSemItem > 0 && (
-                      <p className="mt-1 text-destructive">
-                        {resumoOffline.perdidasSemItem} criatura(s) capturável(is) perdida(s) por falta
-                        de item.
-                      </p>
-                    )}
-                  </div>
-
-                  {resumoOffline.capturadas.length > 0 && (
-                    <div className="mt-4">
-                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                        Capturadas automaticamente ·{" "}
-                        <span className={`rarity-chip rounded-full px-2 py-0.5 ${rarityClass("Raro")}`}>
-                          {resumoOffline.capturadas.length}
-                        </span>
-                      </p>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                        {resumoOffline.capturadas.map((c: CreatureRow) => (
-                          <CreatureCard key={c.id} creature={c} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => setResumoOffline(null)}
-                    className="mt-5 w-full rounded-xl bg-primary px-5 py-3 text-sm font-extrabold uppercase text-primary-foreground"
-                  >
-                    Voltar ao combate
-                  </button>
-                </div>
+            <section className="team-deck">
+              <div className="team-deck-title"><span>TIME ATIVO</span><small>Escolha até 3 · o primeiro é o líder</small></div>
+              <div className="team-grid">
+                {members.map((creature, index) => {
+                  const isLeader = creature.id === session.creature_id;
+                  const hp = isLeader ? jogador.hpMax : Math.max(30, jogador.hpMax - index * 8);
+                  return <article className={`team-card ${isLeader ? "is-leader" : ""}`} key={creature.id}>
+                    <div className="team-portrait">{creature.species?.sprite_url ? <img src={creature.species.sprite_url} alt={creature.species.nome} /> : <Shield />}</div>
+                    <div className="team-info"><div><b>{creature.species?.nome ?? "Criatura"}</b><span>Nv. {creature.nivel}</span></div><small>{index === 0 ? "ATACANTE" : index === 1 ? "SUPORTE" : "DEFENSOR"}</small><div className="pixel-meter pixel-meter-hp"><span style={{ width: "100%" }} /></div><p>{hp} / {hp} HP</p><div className="pixel-meter pixel-meter-exp"><span style={{ width: `${35 + index * 18}%` }} /></div></div>
+                    {!isLeader && <Button size="sm" variant="ghost" onClick={() => leaderMutation.mutate(creature.id)} title="Definir como líder"><Target /></Button>}
+                  </article>;
+                })}
+                {Array.from({ length: Math.max(0, 3 - members.length) }).map((_, index) => <button key={index} className="team-card team-empty" onClick={() => document.getElementById("team-selector")?.scrollIntoView({ behavior: "smooth" })}><Crosshair /><span>Adicionar criatura</span></button>)}
               </div>
-            )}
-          </>
-        )}
+              <details id="team-selector" className="team-selector"><summary>Editar formação</summary><div>{collectionRows.map((creature: any) => <label key={creature.id}><input type="checkbox" checked={teamIds.includes(creature.id)} onChange={() => setTeam(creature.id)} /><span className="mini-portrait">{creature.species?.sprite_url && <img src={creature.species.sprite_url} alt="" />}</span><b>{creature.species?.nome}</b><small>Nv. {creature.nivel}</small></label>)}</div></details>
+            </section>
+          </section>
+
+          <aside className="capture-column">
+            <div className="panel-heading"><span><Crosshair /> CAPTURA</span><span className="capture-timer">{pending && pendingLeft > 0 ? `${Math.ceil(pendingLeft / 1000)}s` : "—"}</span></div>
+            <section className="capture-target">
+              {pending && pendingLeft > 0 ? <><div className="capture-portrait">{pending.species?.sprite_url ? <img src={pending.species.sprite_url} alt={pending.species.nome} /> : <Crosshair />}</div><div className="capture-data"><b>{pending.species?.nome ?? "Criatura"}</b><span>Nv. {pending.nivel}</span><small>CRIATURA CAPTURÁVEL</small></div></> : <div className="capture-empty"><Crosshair /><b>Nenhum alvo disponível</b><span>Derrote inimigos capturáveis</span></div>}
+            </section>
+            <div className="capture-items">
+              {catalogo.map((item: any) => { const quantity = inventario.find((entry: any) => entry.item_id === item.id)?.quantidade ?? 0; return <Button variant="ghost" key={item.id} disabled={!pending || pendingLeft <= 0 || quantity === 0 || captureMutation.isPending} onClick={() => captureMutation.mutate(item.id)} className="capture-item"><span className="capture-orb" style={{ backgroundColor: item.cor }}><span /></span><b>{item.nome.replace("Bola ", "")}</b><small>×{quantity}</small><em>{Math.round(Number(item.taxa_sucesso) * 100)}%</em></Button>; })}
+            </div>
+            <Button className="capture-cta" disabled={!pending || pendingLeft <= 0 || totalItens === 0 || captureMutation.isPending} onClick={() => captureMutation.mutate(undefined)}><Crosshair /> {totalItens === 0 ? "SEM ESFERAS" : "CAPTURAR"}</Button>
+
+            <div className="side-tabs"><span><PackageOpen /> INVENTÁRIO</span><span><Settings2 /> AJUSTES</span></div>
+            <div className="inventory-grid">{catalogo.map((item: any) => { const quantity = inventario.find((entry: any) => entry.item_id === item.id)?.quantidade ?? 0; return <div key={item.id}><span className="capture-orb small" style={{ backgroundColor: item.cor }}><span /></span><b>×{quantity}</b><small>{Math.round(Number(item.chance_drop) * 100)}% drop</small></div>; })}</div>
+            <label className="auto-capture-setting"><input type="checkbox" checked={Boolean(state?.profile?.auto_captura)} onChange={(event) => autoMutation.mutate(event.target.checked)} /><span><b>CAPTURA AUTOMÁTICA</b><small>Usa a melhor esfera disponível</small></span><Zap /></label>
+            <Button variant="outline" className="summary-button" onClick={() => summaryMutation.mutate()} disabled={summaryMutation.isPending}><Trophy /> Coletar resumo</Button>
+            <p className="offline-note">Progresso offline ativo · limite de {CAP_HORAS}h</p>
+          </aside>
+        </div>
       </main>
-    </>
+
+      {resumoOffline && <div className="pixel-modal-backdrop"><section className="pixel-modal"><div className="panel-heading"><span><Trophy /> RELATÓRIO DE EXPEDIÇÃO</span></div><h2>Enquanto você esteve fora</h2><p>{formatDuration(resumoOffline.segundos * 1000)} de combate calculado</p><div className="offline-stats"><span><b>{resumoOffline.batalhas}</b>combates</span><span><b>{resumoOffline.kills}</b>abates</span><span><b>+{Number(resumoOffline.exp).toLocaleString("pt-BR")}</b>EXP</span><span><b>{resumoOffline.derrotas}</b>recuos</span></div><p>Itens encontrados: {resumoOffline.itens.length ? resumoOffline.itens.map((item: any) => `+${item.qtd} ${item.nome}`).join(" · ") : "nenhum"}</p><p>Capturas automáticas: {resumoOffline.capturadas.length} · Tentativas falhas: {resumoOffline.capturasFalhadas}</p><Button onClick={() => setResumoOffline(null)}>VOLTAR À BATALHA</Button></section></div>}
+    </div>
   );
 }

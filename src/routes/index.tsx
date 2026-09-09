@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
@@ -21,58 +21,19 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Landing,
+  component: GameEntry,
 });
 
-function Landing() {
-  const [logado, setLogado] = useState(false);
+function GameEntry() {
+  const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setLogado(!!data.user));
-  }, []);
+    supabase.auth.getUser().then(({ data }) => navigate({ to: data.user ? "/cacando" : "/auth", replace: true }));
+  }, [navigate]);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center px-5 py-16 text-center">
-      <span className="rounded-full border border-border bg-surface/70 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary">
-        MVP · Caça idle
-      </span>
-      <h1 className="mt-6 text-4xl font-extrabold sm:text-6xl">
-        Sua criatura batalha <span className="text-gradient">enquanto você vive</span>
-      </h1>
-      <p className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
-        Escolha seu inicial e assista às auto-batalhas por fases contra as criaturas selvagens da
-        região. Vença, ganhe itens de captura e capture os inimigos capturáveis — até 12 horas de
-        combate continuam sendo calculadas com a aba fechada.
-      </p>
-
-
-      <div className="mt-9 flex flex-wrap justify-center gap-3">
-        <Link
-          to={logado ? "/cacando" : "/auth"}
-          className="rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition hover:brightness-110"
-        >
-          {logado ? "Continuar caçada" : "Criar conta e começar"}
-        </Link>
-        <Link
-          to="/auth"
-          className="rounded-xl border border-border bg-surface/70 px-6 py-3 text-sm font-semibold transition hover:bg-surface-2"
-        >
-          Já tenho conta
-        </Link>
-      </div>
-
-      <div className="mt-14 grid w-full gap-4 sm:grid-cols-3">
-        {[
-          { t: "Combate idle visível", d: "Auto-batalhas por fases, calculadas no servidor até 12h offline." },
-          { t: "IVs e natures", d: "Cada criatura é única: IVs de 0 a 31 e uma entre 10 natures." },
-          { t: "Raridade e shiny", d: "De Comum a Mítico, com chance de shiny de 1 em 500." },
-        ].map((f) => (
-          <div key={f.t} className="panel p-5 text-left">
-            <h2 className="text-sm font-bold text-primary">{f.t}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{f.d}</p>
-          </div>
-        ))}
-      </div>
+    <main className="grid min-h-screen place-items-center bg-background">
+      <div className="text-center"><Shield className="mx-auto size-10 animate-pulse text-primary" /><h1 className="mt-3 font-display text-2xl">Achnuba</h1><p className="text-sm text-muted-foreground">Abrindo sua jornada...</p></div>
     </main>
   );
 }

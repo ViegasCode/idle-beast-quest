@@ -22,14 +22,14 @@ export function parseProgress(value: unknown): FloorProgress {
 
   const record = value as Record<string, unknown>;
   const unlockedFloors = normalizeUnlockedFloors(
-    Array.isArray(record.unlockedFloors) ? (record.unlockedFloors as number[]) : base.unlockedFloors,
+    Array.isArray(record["unlockedFloors"]) ? (record["unlockedFloors"] as number[]) : base.unlockedFloors,
   );
-  const currentFloor = Number(record.currentFloor ?? base.currentFloor) || base.currentFloor;
+  const currentFloor = Number(record["currentFloor"] ?? base.currentFloor) || base.currentFloor;
 
   const bossKeys =
-    record.bossKeys && typeof record.bossKeys === "object"
+    record["bossKeys"] && typeof record["bossKeys"] === "object"
       ? Object.fromEntries(
-          Object.entries(record.bossKeys as Record<string, unknown>).map(([key, value]) => [
+          Object.entries(record["bossKeys"] as Record<string, unknown>).map(([key, value]) => [
             Number(key),
             Math.max(0, Number(value) || 0),
           ]),
@@ -40,7 +40,7 @@ export function parseProgress(value: unknown): FloorProgress {
     currentFloor: Math.max(1, currentFloor),
     unlockedFloors: unlockedFloors.length ? unlockedFloors : base.unlockedFloors,
     bossesDefeated: normalizeBossesDefeated(
-      Array.isArray(record.bossesDefeated) ? (record.bossesDefeated as number[]) : base.bossesDefeated,
+      Array.isArray(record["bossesDefeated"]) ? (record["bossesDefeated"] as number[]) : base.bossesDefeated,
     ),
     bossKeys,
   };

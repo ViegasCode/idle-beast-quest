@@ -23,15 +23,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
-const lockedItems = [
-  { label: "Mundo", icon: Globe2 },
-  { label: "Cidade", icon: Castle },
-  { label: "Time", icon: Users },
-  { label: "Bolsa", icon: Backpack },
-  { label: "Loja", icon: Store },
-  { label: "Missões", icon: ScrollText },
-];
-
 export function GameNav({ treinador, total }: { treinador?: string; total?: number }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();

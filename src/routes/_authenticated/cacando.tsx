@@ -155,7 +155,7 @@ function Combate() {
                     {!isLeader && <Button size="sm" variant="ghost" onClick={() => leaderMutation.mutate(creature.id)} title="Definir como líder"><Target /></Button>}
                   </article>;
                 })}
-                {Array.from({ length: Math.max(0, 3 - members.length) }).map((_, index) => <button key={index} className="team-card team-empty" onClick={() => document.getElementById("team-selector")?.scrollIntoView({ behavior: "smooth" })}><Crosshair /><span>Adicionar criatura</span></button>)}
+                {Array.from({ length: Math.max(0, 3 - members.length) }).map((_, index) => <Button variant="ghost" key={index} className="team-card team-empty" onClick={() => document.getElementById("team-selector")?.scrollIntoView({ behavior: "smooth" })}><Crosshair /><span>Adicionar criatura</span></Button>)}
               </div>
               <details id="team-selector" className="team-selector"><summary>Editar formação</summary><div>{collectionRows.map((creature: any) => <label key={creature.id}><input type="checkbox" checked={teamIds.includes(creature.id)} onChange={() => setTeam(creature.id)} /><span className="mini-portrait">{creature.species?.sprite_url && <img src={creature.species.sprite_url} alt="" />}</span><b>{creature.species?.nome}</b><small>Nv. {creature.nivel}</small></label>)}</div></details>
             </section>

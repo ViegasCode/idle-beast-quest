@@ -6,6 +6,7 @@ import {
   INIMIGOS_POR_FASE,
   JANELA_CAPTURA_MS,
   MAX_BATALHAS_POR_RESOLUCAO,
+  bossDaFase,
   combatenteDoJogador,
   expNecessaria,
   expPorAbate,
@@ -18,6 +19,7 @@ import {
   type RegiaoLike,
   type SpeciesLike,
 } from "./combat";
+import { BOSS_KEY_ITEM_ID, getBossPhaseNumber, isBossUnlocked } from "./progression";
 
 function randInt(max: number) {
   return Math.floor(Math.random() * max);
@@ -106,6 +108,8 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
   const pool = await carregarPool(supabase, (region.species_ids ?? []) as number[]);
   const criatura = session.creatures;
   const jogador = combatenteDoJogador(criatura);
+  const bossPhaseNumber = getBossPhaseNumber(region.fases ?? 1);
+  const isBossSelection = (session.fase ?? 1) === bossPhaseNumber;
 
   const agora = Date.now();
   const desde = new Date(session.ultima_resolucao_em ?? session.ultima_coleta_em).getTime();
@@ -134,8 +138,8 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
 
   if (pool.length) {
     while (budget > 0 && batalhas < MAX_BATALHAS_POR_RESOLUCAO) {
-      const fila = inimigosDaFase(region, fase, pool);
-      const inimigo = fila[faseKills % INIMIGOS_POR_FASE]!;
+      const fila = isBossSelection ? bossDaFase(region, fase, pool) : inimigosDaFase(region, fase, pool);
+      const inimigo = fila[Math.min(faseKills % Math.max(1, fila.length), fila.length - 1)] ?? fila[0]!;
       const res = simularBatalha(jogador, inimigo.combatente, rng, hp);
       if (res.duracaoMs > budget) break;
       budget -= res.duracaoMs;
@@ -193,16 +197,9 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
 
       faseKills++;
       if (faseKills >= INIMIGOS_POR_FASE) {
-        // If player has enabled repeat phase, keep the same phase and reset kills
-        if (profile?.repetir_fase) {
-          faseKills = 0;
-          // if profile specifies a phase to repeat, respect it
-          if (profile.fase_repetir && typeof profile.fase_repetir === 'number') {
-            fase = profile.fase_repetir;
-          }
-        } else {
-          faseKills = 0;
-          fase = fase >= fasesTotal ? 1 : fase + 1;
+        faseKills = 0;
+        if (profile?.repetir_fase && typeof profile.fase_repetir === "number") {
+          fase = profile.fase_repetir;
         }
       }
     }
@@ -297,7 +294,7 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
     },
     criatura,
     combatente: jogador,
-    inimigos: pool.length ? inimigosDaFase(region, fase, pool) : [],
+    inimigos: pool.length ? (isBossSelection ? bossDaFase(region, fase, pool) : inimigosDaFase(region, fase, pool)) : [],
     inventario: catalogo.map((i) => ({ item_id: i.id, quantidade: inventario.get(i.id) ?? 0 })),
     pending: pendingAtual ? { ...pendingAtual, species: pendingSpecies } : null,
     resumo: {
@@ -329,13 +326,40 @@ export const setSelectedPhase = createServerFn({ method: "POST" })
   .inputValidator((data: { fase: number }) => ({ fase: Number(data.fase) }))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as SupabaseCtx;
-    if (!data || typeof data.fase !== 'number' || Number.isNaN(data.fase)) throw new Error('Fase inválida');
+    if (!data || typeof data.fase !== "number" || Number.isNaN(data.fase)) throw new Error("Fase inválida");
+
+    const { data: session } = await supabase
+      .from("hunting_sessions")
+      .select("*, regions(*)")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!session?.regions) throw new Error("Nenhuma região ativa para esta sessão.");
+
+    const maxNormalPhase = Number(session.regions.fases ?? 1);
+    const bossPhase = getBossPhaseNumber(maxNormalPhase);
+    const fase = Math.max(1, Math.floor(data.fase));
+
+    if (fase > bossPhase) throw new Error("Fase inválida para o andar atual.");
+    if (fase === bossPhase) {
+      const { data: keyRow } = await supabase
+        .from("user_items")
+        .select("quantidade")
+        .eq("user_id", userId)
+        .eq("item_id", BOSS_KEY_ITEM_ID)
+        .maybeSingle();
+
+      const keyCount = Number(keyRow?.quantidade ?? 0);
+      if (keyCount <= 0) {
+        throw new Error("Você precisa da chave do Boss para acessar esta fase.");
+      }
+    }
+
     const { error } = await supabase
-      .from('hunting_sessions')
-      .update({ fase: data.fase, fase_kills: 0, ultima_resolucao_em: new Date().toISOString() })
-      .eq('user_id', userId);
+      .from("hunting_sessions")
+      .update({ fase, fase_kills: 0, ultima_resolucao_em: new Date().toISOString() })
+      .eq("user_id", userId);
     if (error) throw new Error(error.message);
-    return { ok: true, fase: data.fase };
+    return { ok: true, fase };
   });
 
 export const setRepeatPhase = createServerFn({ method: "POST" })
@@ -557,6 +581,7 @@ export const changeRegion = createServerFn({ method: "POST" })
       })
       .eq("user_id", userId);
     if (error) throw new Error(error.message);
+
     return { ok: true };
   });
 

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { chooseStarter, createProfile, getCombatState, getStarters } from "@/lib/game.functions";
 
 export const Route = createFileRoute("/_authenticated/inicial")({
@@ -28,8 +29,41 @@ function Inicial() {
   const escolher = useServerFn(chooseStarter);
 
   const [nome, setNome] = useState("");
+  const [perfilCarregado, setPerfilCarregado] = useState(false);
+  const [perfilLocal, setPerfilLocal] = useState<any>(null);
 
-  const { data: state } = useQuery({ queryKey: ["combatState"], queryFn: () => fetchState() });
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregarPerfil() {
+      const { data: sessionData } = await supabase.auth.getUser();
+      const user = sessionData?.user;
+      if (!user) {
+        if (ativo) setPerfilCarregado(true);
+        return;
+      }
+
+      const { data: perfil } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+      if (!ativo) return;
+      setPerfilLocal(perfil ?? null);
+      setPerfilCarregado(true);
+
+      if (perfil?.starter_escolhido) {
+        navigate({ to: "/cacando", replace: true });
+      }
+    }
+
+    carregarPerfil();
+    return () => {
+      ativo = false;
+    };
+  }, [navigate]);
+
+  const { data: state } = useQuery({
+    queryKey: ["combatState"],
+    queryFn: () => fetchState(),
+    enabled: !!perfilLocal || perfilCarregado,
+  });
   const { data: starters } = useQuery({ queryKey: ["starters"], queryFn: () => fetchStarters() });
 
   useEffect(() => {
@@ -52,7 +86,7 @@ function Inicial() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const temPerfil = !!state?.profile;
+  const temPerfil = !!(perfilLocal ?? state?.profile);
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">

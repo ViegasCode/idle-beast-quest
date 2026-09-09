@@ -44,7 +44,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
         if (error) throw error;
       }
-      navigate({ to: "/cacando" });
+      navigate({ to: "/inicial" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível continuar.");
     } finally {
@@ -61,7 +61,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/cacando" });
+    navigate({ to: "/inicial" });
   }
 
   return (

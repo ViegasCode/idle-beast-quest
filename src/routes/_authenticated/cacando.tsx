@@ -19,6 +19,7 @@ import { CombatArena } from "@/components/CombatArena";
 import { GameNav } from "@/components/GameNav";
 import { formatDuration, rarityClass } from "@/lib/game";
 import { CAP_HORAS, INIMIGOS_POR_FASE, type Combatente, type Inimigo } from "@/lib/combat";
+import { BOSS_KEY_ITEM_ID, getBossPhaseNumber } from "@/lib/progression";
 
 export const Route = createFileRoute("/_authenticated/cacando")({
   head: () => ({
@@ -142,6 +143,10 @@ function Combate() {
   const catalogo = state?.catalogo ?? [];
   const inventario = state?.inventario ?? [];
   const pending = state?.pending as any;
+  const bossPhaseNumber = getBossPhaseNumber(Number(regiao?.fases ?? 8));
+  const hasBossKey = (inventario.find((item: any) => item.item_id === BOSS_KEY_ITEM_ID)?.quantidade ?? 0) > 0;
+  const selectablePhases = Array.from({ length: regiao?.fases ?? 8 }, (_, index) => index + 1);
+  selectablePhases.push(bossPhaseNumber);
 
   const desdeColeta = session ? agora - new Date(session.ultima_coleta_em).getTime() : 0;
   const horas = Math.max(desdeColeta / 3_600_000, 1 / 60);
@@ -256,15 +261,23 @@ function Combate() {
                 <div className="mt-4">
                   <p className="text-xs font-bold text-muted-foreground">Seleção de Fase</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    {Array.from({ length: regiao?.fases ?? 8 }).map((_, i) => {
-                      const num = i + 1;
+                    {selectablePhases.map((num) => {
                       const selected = session.fase === num;
+                      const isBoss = num === bossPhaseNumber;
+                      const disabled = isBoss && !hasBossKey;
                       return (
                         <button
                           key={num}
-                          onClick={() => selectPhaseMutation.mutate(num)}
-                          className={`rounded-xl px-3 py-2 text-xs font-bold transition ${selected ? 'bg-primary text-primary-foreground' : 'border border-border bg-surface-2/60'}`}>
-                          {`F${num}`}
+                          onClick={() => {
+                            if (disabled) return;
+                            selectPhaseMutation.mutate(num);
+                          }}
+                          disabled={disabled}
+                          className={`rounded-xl px-3 py-2 text-xs font-bold transition ${
+                            selected ? 'bg-primary text-primary-foreground' : 'border border-border bg-surface-2/60'
+                          } ${isBoss ? 'ring-1 ring-amber-400/80' : ''} ${disabled ? 'cursor-not-allowed opacity-45' : ''}`}
+                        >
+                          {isBoss ? `Boss ${num}` : `F${num}`}
                         </button>
                       );
                     })}

@@ -279,6 +279,40 @@ export function inimigosDaFase(
   return lista;
 }
 
+export function bossDaFase(regiao: RegiaoLike, fase: number, pool: SpeciesLike[]): Inimigo[] {
+  const bossSpecies = pool[Math.min(pool.length - 1, Math.max(0, fase - 1))] ?? pool[0]!;
+  const nivelBoss = Math.max(regiao.nivel_maximo + 2, nivelDaFase(regiao, fase) + 8);
+  const comb = combatenteDoJogador({
+    nivel: nivelBoss,
+    iv_hp: 30,
+    iv_ataque: 31,
+    iv_defesa: 31,
+    iv_velocidade: 26,
+    nature: "Feroz",
+    is_shiny: false,
+    species: bossSpecies,
+  });
+
+  comb.nome = `${bossSpecies.nome} Chefe`;
+  comb.ataque = Math.max(1, Math.round(comb.ataque * 1.7));
+  comb.defesa = Math.max(1, Math.round(comb.defesa * 1.5));
+  comb.hpMax = Math.max(50, Math.round(comb.hpMax * 2.1));
+  comb.velocidade = Math.max(1, Math.round(comb.velocidade * 1.15));
+
+  return [
+    {
+      index: 0,
+      species_id: bossSpecies.id,
+      nome: comb.nome,
+      nivel: nivelBoss,
+      is_capturavel: false,
+      sprite_url: bossSpecies.sprite_url,
+      tipos: [bossSpecies.tipo_primario, bossSpecies.tipo_secundario],
+      combatente: comb,
+    },
+  ];
+}
+
 /* ---------------- Batalha ---------------- */
 
 export type TurnoLog = {

@@ -136,9 +136,13 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
   const mult = Number(region.multiplicador_raridade) || 1;
   const fasesTotal = Math.max(1, region.fases ?? 8);
 
+  const poolIds = pool.map((s) => s.id);
+  let faseDef = getFaseDef(region.id, fase, poolIds, fasesTotal);
+
   if (pool.length) {
     while (budget > 0 && batalhas < MAX_BATALHAS_POR_RESOLUCAO) {
-      const fila = isBossSelection ? bossDaFase(region, fase, pool) : inimigosDaFase(region, fase, pool);
+      faseDef = getFaseDef(region.id, fase, poolIds, fasesTotal);
+      const fila = isBossSelection ? bossDaFase(region, fase, pool) : inimigosDaFase(region, fase, pool, faseDef);
       const inimigo = fila[Math.min(faseKills % Math.max(1, fila.length), fila.length - 1)] ?? fila[0]!;
       const res = simularBatalha(jogador, inimigo.combatente, rng, hp);
       if (res.duracaoMs > budget) break;
@@ -156,15 +160,16 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
       expGanha += expPorAbate(inimigo.nivel);
       hp = regenerar(res.hpJogadorFinal, jogador.hpMax);
 
+      // drop de itens: chance do item ajustada pelo multiplicador da fase
       for (const item of catalogo) {
-        if (rng() < Number(item.chance_drop)) {
+        const chance = Math.min(0.95, Number(item.chance_drop) * faseDef.dropMult);
+        if (rng() < chance) {
           dropsGanhos.set(item.id, (dropsGanhos.get(item.id) ?? 0) + 1);
           inventario.set(item.id, (inventario.get(item.id) ?? 0) + 1);
         }
       }
 
-      // TODO: todos os inimigos são elegíveis para captura — remover restrições antigas
-      {
+      if (inimigo.is_capturavel && faseDef.taxaCaptura > 0) {
         const disponiveis = catalogo
           .filter((i) => (inventario.get(i.id) ?? 0) > 0)
           .sort((a, b) => Number(b.taxa_sucesso) - Number(a.taxa_sucesso));
@@ -174,14 +179,17 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
         // Modo automático: consome o melhor item disponível e tenta a captura imediatamente
         if (profile?.auto_captura && melhor) {
           inventario.set(melhor.id, (inventario.get(melhor.id) ?? 0) - 1);
-          // Chance fixa de 10% por tentativa
-          if (rng() < 0.1) {
+          const chance = Math.min(0.95, faseDef.taxaCaptura * Number(melhor.taxa_sucesso));
+          if (rng() < chance) {
             novasCriaturas.push(
               novaCriatura(userId, inimigo.species_id, inimigo.nivel, sortearRaridade(mult, rng)),
             );
           } else {
             capturasFalhadas++;
           }
+        } else if (profile?.auto_captura && !melhor) {
+          // Auto tentou mas não tinha item: contabiliza perda
+          perdidasSemItem++;
         } else if (dentroDaJanela) {
           // Modo manual: coloca pending para exibir botão de captura ao jogador
           pending = {
@@ -189,21 +197,21 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
             nivel: inimigo.nivel,
             expira_em: new Date(agora - budget + JANELA_CAPTURA_MS).toISOString(),
           };
-        } else if (profile?.auto_captura && !melhor) {
-          // Auto tentou mas não tinha item: contabiliza perda
-          perdidasSemItem++;
         }
       }
 
       faseKills++;
-      if (faseKills >= INIMIGOS_POR_FASE) {
+      if (faseKills >= inimigosDaFaseCount(faseDef)) {
         faseKills = 0;
         if (profile?.repetir_fase && typeof profile.fase_repetir === "number") {
           fase = profile.fase_repetir;
+        } else if (!isBossSelection && fase < fasesTotal) {
+          fase++;
         }
       }
     }
   }
+
 
   /* ---- persistência ---- */
 

@@ -1,4 +1,6 @@
 import { NATURES, RARITIES, RARITY_BASE_WEIGHTS, type Rarity } from "./game";
+import { getFaseDef, inimigosDaFaseCount, type FaseDef } from "./phases";
+
 
 export const CAP_HORAS = 12;
 export const CAP_MS = CAP_HORAS * 60 * 60 * 1000;

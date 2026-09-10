@@ -1,4 +1,6 @@
 import { NATURES, RARITIES, RARITY_BASE_WEIGHTS, type Rarity } from "./game";
+import { getFaseDef, inimigosDaFaseCount, type FaseDef } from "./phases";
+
 
 export const CAP_HORAS = 12;
 export const CAP_MS = CAP_HORAS * 60 * 60 * 1000;
@@ -239,14 +241,20 @@ export function inimigosDaFase(
   regiao: RegiaoLike,
   fase: number,
   pool: SpeciesLike[],
+  def?: FaseDef,
 ): Inimigo[] {
+  const definicao =
+    def ?? getFaseDef(regiao.id, fase, pool.map((s) => s.id), Math.max(1, regiao.fases ?? 8));
+  const elenco = pool.filter((s) => definicao.especies.includes(s.id));
+  const usados = elenco.length ? elenco : pool;
   const nivelBase = nivelDaFase(regiao, fase);
+  const total = inimigosDaFaseCount(definicao);
   const lista: Inimigo[] = [];
-  for (let i = 0; i < INIMIGOS_POR_FASE; i++) {
+  for (let i = 0; i < total; i++) {
     const rng = mulberry32(hashSeed(regiao.id, fase, i));
-    const s = pool[Math.floor(rng() * pool.length)] ?? pool[0]!;
-    // reduzir variação de nível dos inimigos para deixá-los menos fortes que o jogador
-    const nivel = Math.max(1, nivelBase + Math.floor(rng() * 2) - 1);
+    const s = usados[i % usados.length] ?? usados[0]!;
+    // nível da fase + ajuste definido para a fase, com leve variação
+    const nivel = Math.max(1, nivelBase + definicao.nivelBonus + Math.floor(rng() * 2));
     const iv = () => Math.floor(rng() * 26);
     const comb = combatenteDoJogador({
       nivel,
@@ -260,7 +268,6 @@ export function inimigosDaFase(
     });
     comb.nome = s.nome;
     // inimigos selvagens são um pouco mais fracos que criaturas treinadas
-    // enfraquecer inimigos para uma experiência de exploração mais suave
     comb.ataque = Math.max(1, Math.round(comb.ataque * 0.5));
     comb.defesa = Math.max(1, Math.round(comb.defesa * 0.6));
     comb.hpMax = Math.max(6, Math.round(comb.hpMax * 0.75));
@@ -269,8 +276,7 @@ export function inimigosDaFase(
       species_id: s.id,
       nome: s.nome,
       nivel,
-      // Tornar todo inimigo derrotado elegível para captura
-      is_capturavel: true,
+      is_capturavel: definicao.taxaCaptura > 0,
       sprite_url: s.sprite_url,
       tipos: [s.tipo_primario, s.tipo_secundario],
       combatente: comb,
@@ -278,6 +284,7 @@ export function inimigosDaFase(
   }
   return lista;
 }
+
 
 export function bossDaFase(regiao: RegiaoLike, fase: number, pool: SpeciesLike[]): Inimigo[] {
   const bossSpecies = pool[Math.min(pool.length - 1, Math.max(0, fase - 1))] ?? pool[0]!;

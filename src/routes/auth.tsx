@@ -4,6 +4,7 @@ import { Shield, Swords } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -104,24 +105,25 @@ function AuthPage() {
               placeholder="Senha (mín. 6 caracteres)"
               className="pixel-input"
             />
-            <button type="submit" disabled={carregando} className="pixel-button">
+            <Button type="submit" disabled={carregando} className="pixel-button">
               {carregando ? "Aguarde..." : modo === "signup" ? "Criar conta" : "Entrar"}
-            </button>
+            </Button>
           </form>
 
           <div className="pixel-divider">ou</div>
 
-          <button type="button" onClick={google} className="pixel-button pixel-button-ghost">
+          <Button type="button" variant="ghost" onClick={google} className="pixel-button pixel-button-ghost">
             Continuar com Google
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
+            variant="link"
             onClick={() => setModo(modo === "signup" ? "login" : "signup")}
             className="pixel-link mt-5 block w-full text-center"
           >
             {modo === "signup" ? "Já tenho conta — entrar" : "Não tenho conta — criar agora"}
-          </button>
+          </Button>
         </div>
       </div>
     </main>

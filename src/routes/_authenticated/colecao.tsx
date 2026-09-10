@@ -6,6 +6,7 @@ import { PawPrint, Sparkles } from "lucide-react";
 import { getCombatState, listCollection } from "@/lib/game.functions";
 import { CreatureCard, type CreatureRow } from "@/components/CreatureCard";
 import { GameNav } from "@/components/GameNav";
+import { Button } from "@/components/ui/button";
 import { RARITIES } from "@/lib/game";
 
 export const Route = createFileRoute("/_authenticated/colecao")({
@@ -64,15 +65,16 @@ function Colecao() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {["Todas", ...RARITIES, "Shiny"].map((f) => (
-                  <button
+                  <Button
                     key={f}
                     type="button"
+                    variant="ghost"
                     onClick={() => setFiltro(f)}
                     className={`pixel-chip ${filtro === f ? "is-active" : ""}`}
                   >
                     {f === "Shiny" ? <Sparkles className="size-3" /> : null}
                     {f}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>

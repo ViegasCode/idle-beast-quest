@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { PawPrint, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { chooseStarter, createProfile, getCombatState, getStarters } from "@/lib/game.functions";
 
@@ -116,9 +117,9 @@ function Inicial() {
                 placeholder="Ex: Kaia do Vale"
                 className="pixel-input"
               />
-              <button disabled={perfilMutation.isPending} className="pixel-button">
+              <Button disabled={perfilMutation.isPending} className="pixel-button">
                 Continuar
-              </button>
+              </Button>
             </form>
           </div>
         </div>
@@ -136,8 +137,9 @@ function Inicial() {
 
             <div className="starter-grid mt-6">
               {(starters ?? []).map((s) => (
-                <button
+                <Button
                   key={s.id}
+                  variant="ghost"
                   onClick={() => starterMutation.mutate(s.id)}
                   disabled={starterMutation.isPending}
                   className="starter-card"
@@ -169,7 +171,7 @@ function Inicial() {
                     </div>
                   </dl>
                   <span className="pixel-button mt-1 !h-9 !text-[10px]">Escolher</span>
-                </button>
+                </Button>
               ))}
             </div>
           </div>

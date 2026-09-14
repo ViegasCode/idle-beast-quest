@@ -3,7 +3,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { NATURES, SHINY_CHANCE } from "./game";
 import {
   CAP_MS,
-  INIMIGOS_POR_FASE,
   JANELA_CAPTURA_MS,
   MAX_BATALHAS_POR_RESOLUCAO,
   bossDaFase,
@@ -101,6 +100,7 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
       inventario: [...inventario].map(([item_id, quantidade]) => ({ item_id, quantidade })),
       pending: null,
       resumo: null,
+      faseDef: null,
       totalCriaturas: 0,
     };
   }
@@ -110,7 +110,6 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
   const criatura = session.creatures;
   const jogador = combatenteDoJogador(criatura);
   const bossPhaseNumber = getBossPhaseNumber(region.fases ?? 1);
-  const isBossSelection = (session.fase ?? 1) === bossPhaseNumber;
 
   const agora = Date.now();
   const desde = new Date(session.ultima_resolucao_em ?? session.ultima_coleta_em).getTime();

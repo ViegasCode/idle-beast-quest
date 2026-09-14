@@ -143,7 +143,8 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
   if (pool.length) {
     while (budget > 0 && batalhas < MAX_BATALHAS_POR_RESOLUCAO) {
       faseDef = getFaseDef(region.id, fase, poolIds, fasesTotal);
-      const fila = isBossSelection ? bossDaFase(region, fase, pool) : inimigosDaFase(region, fase, pool, faseDef);
+      const faseEhChefe = fase === bossPhaseNumber;
+      const fila = faseEhChefe ? bossDaFase(region, fase, pool) : inimigosDaFase(region, fase, pool, faseDef);
       const inimigo = fila[Math.min(faseKills % Math.max(1, fila.length), fila.length - 1)] ?? fila[0]!;
       const res = simularBatalha(jogador, inimigo.combatente, rng, hp);
       if (res.duracaoMs > budget) break;
@@ -206,7 +207,7 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
         faseKills = 0;
         if (profile?.repetir_fase && typeof profile.fase_repetir === "number") {
           fase = profile.fase_repetir;
-        } else if (!isBossSelection && fase < fasesTotal) {
+        } else if (!faseEhChefe && fase < fasesTotal) {
           fase++;
         }
       }
@@ -401,7 +402,7 @@ export const tentarCaptura = createServerFn({ method: "POST" })
 
     const { data: session } = await supabase
       .from("hunting_sessions")
-      .select("*, regions(multiplicador_raridade)")
+      .select("*, regions(id, multiplicador_raridade, fases, species_ids)")
       .eq("user_id", userId)
       .maybeSingle();
     if (!session?.pending_species_id || !session.pending_expira_em) {
@@ -430,8 +431,14 @@ export const tentarCaptura = createServerFn({ method: "POST" })
       .eq("user_id", userId)
       .eq("item_id", item.id);
 
-    // Chance fixa de 10% por tentativa
-    const sucesso = Math.random() < 0.1;
+    const region = session.regions;
+    const faseDef = getFaseDef(
+      Number(region?.id ?? 0),
+      Number(session.fase ?? 1),
+      (region?.species_ids ?? []) as number[],
+      Number(region?.fases ?? 8),
+    );
+    const sucesso = Math.random() < Math.min(0.95, faseDef.taxaCaptura * Number(item.taxa_sucesso));
     let criatura: any = null;
     if (sucesso) {
       const mult = Number(session.regions?.multiplicador_raridade) || 1;

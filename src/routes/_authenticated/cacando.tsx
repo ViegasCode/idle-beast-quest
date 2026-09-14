@@ -2,12 +2,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { Activity, ChevronLeft, ChevronRight, Clock3, Crosshair, PackageOpen, Repeat2, Settings2, Shield, Sparkles, Swords, Target, Trophy, Zap } from "lucide-react";
+import { Activity, ChevronLeft, ChevronRight, Clock3, Crosshair, PackageOpen, Repeat2, Settings2, Shield, Sparkles, Swords, Trophy, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { CombatArena } from "@/components/CombatArena";
 import { GameNav } from "@/components/GameNav";
 import { Button } from "@/components/ui/button";
-import { changeRegion, coletarResumo, getCombatState, listCollection, setActiveCreature, setAutoCaptura, setRepeatPhase, setSelectedPhase, tentarCaptura } from "@/lib/game.functions";
+import { changeRegion, coletarResumo, getCombatState, listCollection, setAutoCaptura, setRepeatPhase, setSelectedPhase, tentarCaptura } from "@/lib/game.functions";
 import { formatDuration } from "@/lib/game";
 import { CAP_HORAS, type Combatente, type Inimigo } from "@/lib/combat";
 import { BOSS_KEY_ITEM_ID, getBossPhaseNumber } from "@/lib/progression";
@@ -35,7 +35,6 @@ function Combate() {
   const setPhaseFn = useServerFn(setSelectedPhase);
   const repeatPhaseFn = useServerFn(setRepeatPhase);
   const listar = useServerFn(listCollection);
-  const setLeader = useServerFn(setActiveCreature);
   const [agora, setAgora] = useState(() => Date.now());
   const [resumoOffline, setResumoOffline] = useState<any>(null);
   const [mostrouResumo, setMostrouResumo] = useState(false);
@@ -54,7 +53,6 @@ function Combate() {
   const pending = state?.pending as any;
   const faseDef = state?.faseDef as { nome: string; inimigos: number; dropMult: number; taxaCaptura: number } | undefined;
 
-  const [teamIds, setTeamIds] = useState<string[]>([]);
   useEffect(() => {
     const timer = setInterval(() => setAgora(Date.now()), 1000);
     return () => clearInterval(timer);
@@ -68,15 +66,6 @@ function Combate() {
     setMostrouResumo(true);
   }, [state, mostrouResumo]);
   useEffect(() => {
-    if (!session?.creature_id) return;
-    try {
-      const saved = JSON.parse(localStorage.getItem("team") ?? "[]") as string[];
-      setTeamIds(saved.length ? saved.slice(0, 3) : [session.creature_id]);
-    } catch {
-      setTeamIds([session.creature_id]);
-    }
-  }, [session?.creature_id]);
-  useEffect(() => {
     const activeRegion = regionListRef.current?.querySelector<HTMLElement>(".region-tile.is-active");
     activeRegion?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }, [regiao?.id]);
@@ -88,12 +77,14 @@ function Combate() {
   const regionMutation = useMutation({ mutationFn: (region_id: number) => trocarRegiao({ data: { region_id } }), onSuccess: async () => { await refresh(); toast.success("Região alterada."); }, onError: (error: Error) => toast.error(error.message) });
   const phaseMutation = useMutation({ mutationFn: (fase: number) => setPhaseFn({ data: { fase } }), onSuccess: refresh, onError: (error: Error) => toast.error(error.message) });
   const repeatMutation = useMutation({ mutationFn: (payload: { ativo: boolean; fase?: number | null }) => repeatPhaseFn({ data: payload }), onSuccess: refresh });
-  const leaderMutation = useMutation({ mutationFn: (creature_id: string) => setLeader({ data: { creature_id } }), onSuccess: async () => { await refresh(); toast.success("Líder atualizado."); } });
 
   if (isPending || !session || !jogador) return <div className="game-loading"><Shield /><span>Preparando a arena...</span></div>;
 
   const collectionRows = collection ?? [];
-  const members = teamIds.map((id) => collectionRows.find((creature: any) => creature.id === id)).filter(Boolean) as any[];
+  const savedTeamIds = Array.isArray(state?.profile?.active_team_ids) && state.profile.active_team_ids.length
+    ? state.profile.active_team_ids.slice(0, 3)
+    : [session.creature_id];
+  const members = savedTeamIds.map((id: string) => collectionRows.find((creature: any) => creature.id === id)).filter(Boolean) as any[];
   const combatTeam: Combatente[] = members.map((creature) => creature.id === session.creature_id ? jogador : ({ nome: creature.species?.nome ?? "Criatura", nivel: creature.nivel, tipos: [creature.species?.tipo_primario ?? null, creature.species?.tipo_secundario ?? null], sprite_url: creature.species?.sprite_url ?? null, hpMax: jogador.hpMax, ataque: Math.max(1, Math.round(jogador.ataque * .75)), defesa: jogador.defesa, velocidade: jogador.velocidade, is_shiny: creature.is_shiny }));
   const desdeColeta = agora - new Date(session.ultima_coleta_em).getTime();
   const killsHora = Math.round((session.kills_total ?? 0) / Math.max(desdeColeta / 3_600_000, 1 / 60));
@@ -105,14 +96,6 @@ function Combate() {
   const bossPhase = getBossPhaseNumber(phaseTotal);
   const hasBossKey = (inventario.find((item: any) => item.item_id === BOSS_KEY_ITEM_ID)?.quantidade ?? 0) > 0;
   const phases = [...Array.from({ length: phaseTotal }, (_, index) => index + 1), bossPhase];
-
-  function setTeam(id: string) {
-    setTeamIds((current) => {
-      const next = current.includes(id) ? current.filter((value) => value !== id) : [...current, id].slice(-3);
-      localStorage.setItem("team", JSON.stringify(next));
-      return next;
-    });
-  }
 
   function scrollRegions(direction: -1 | 1) {
     const list = regionListRef.current;
@@ -164,12 +147,10 @@ function Combate() {
                   return <article className={`team-card ${isLeader ? "is-leader" : ""}`} key={creature.id}>
                     <div className="team-portrait">{creature.species?.sprite_url ? <img src={creature.species.sprite_url} alt={creature.species.nome} /> : <Shield />}</div>
                     <div className="team-info"><div><b>{creature.species?.nome ?? "Criatura"}</b><span>Nv. {creature.nivel}</span></div><small>{index === 0 ? "ATACANTE" : index === 1 ? "SUPORTE" : "DEFENSOR"}</small><div className="pixel-meter pixel-meter-hp"><span style={{ width: "100%" }} /></div><p>{hp} / {hp} HP</p><div className="pixel-meter pixel-meter-exp"><span style={{ width: `${35 + index * 18}%` }} /></div></div>
-                    {!isLeader && <Button size="sm" variant="ghost" onClick={() => leaderMutation.mutate(creature.id)} title="Definir como líder"><Target /></Button>}
                   </article>;
                 })}
-                {Array.from({ length: Math.max(0, 3 - members.length) }).map((_, index) => <Button variant="ghost" key={index} className="team-card team-empty" onClick={() => document.getElementById("team-selector")?.scrollIntoView({ behavior: "smooth" })}><Crosshair /><span>Adicionar criatura</span></Button>)}
+                {Array.from({ length: Math.max(0, 3 - members.length) }).map((_, index) => <Button variant="ghost" key={index} className="team-card team-empty" onClick={() => navigate({ to: "/colecao" })}><Crosshair /><span>Adicionar em Capturas</span></Button>)}
               </div>
-              <details id="team-selector" className="team-selector"><summary>Editar formação</summary><div>{collectionRows.map((creature: any) => <label key={creature.id}><input type="checkbox" checked={teamIds.includes(creature.id)} onChange={() => setTeam(creature.id)} /><span className="mini-portrait">{creature.species?.sprite_url && <img src={creature.species.sprite_url} alt="" />}</span><b>{creature.species?.nome}</b><small>Nv. {creature.nivel}</small></label>)}</div></details>
             </section>
           </section>
 

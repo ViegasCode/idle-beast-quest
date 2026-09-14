@@ -625,6 +625,41 @@ export const setActiveCreature = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const saveTeamFormation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { creature_ids: string[] }) => ({
+    creature_ids: Array.isArray(data.creature_ids)
+      ? [...new Set(data.creature_ids.map(String))].slice(0, 3)
+      : [],
+  }))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as SupabaseCtx;
+    if (data.creature_ids.length === 0) throw new Error("O time precisa ter pelo menos uma criatura.");
+
+    const { data: owned, error: ownedError } = await supabase
+      .from("creatures")
+      .select("id")
+      .eq("user_id", userId)
+      .in("id", data.creature_ids);
+    if (ownedError) throw new Error(ownedError.message);
+    if ((owned ?? []).length !== data.creature_ids.length) throw new Error("Uma criatura da formação não pertence à sua coleção.");
+
+    const now = new Date().toISOString();
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ active_team_ids: data.creature_ids })
+      .eq("id", userId);
+    if (profileError) throw new Error(profileError.message);
+
+    const { error: sessionError } = await supabase
+      .from("hunting_sessions")
+      .update({ creature_id: data.creature_ids[0], ultima_resolucao_em: now })
+      .eq("user_id", userId);
+    if (sessionError) throw new Error(sessionError.message);
+
+    return { ok: true, creature_ids: data.creature_ids };
+  });
+
 export const listCollection = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {

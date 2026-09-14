@@ -210,6 +210,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_team_ids: string[]
           auto_captura: boolean
           bosses_defeated: number[]
           criado_em: string
@@ -222,6 +223,7 @@ export type Database = {
           unlocked_floors: number[]
         }
         Insert: {
+          active_team_ids?: string[]
           auto_captura?: boolean
           bosses_defeated?: number[]
           criado_em?: string
@@ -234,6 +236,7 @@ export type Database = {
           unlocked_floors?: number[]
         }
         Update: {
+          active_team_ids?: string[]
           auto_captura?: boolean
           bosses_defeated?: number[]
           criado_em?: string

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { rarityClass, natureInfo, STAT_LABELS } from "@/lib/game";
 
 type Species = {
@@ -37,7 +38,7 @@ function IvBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-export function CreatureCard({ creature }: { creature: CreatureRow }) {
+export function CreatureCard({ creature, action }: { creature: CreatureRow; action?: ReactNode }) {
   const s = creature.species;
   const nat = natureInfo(creature.nature);
   return (
@@ -46,6 +47,7 @@ export function CreatureCard({ creature }: { creature: CreatureRow }) {
         creature.is_shiny ? "shiny-card" : ""
       }`}
     >
+      {action ? <div className="creature-card-action">{action}</div> : null}
       <div className="flex items-start gap-3">
         <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-secondary/60">
           {s?.sprite_url ? (

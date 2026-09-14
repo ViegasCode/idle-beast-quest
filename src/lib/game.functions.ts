@@ -20,6 +20,7 @@ import {
   type SpeciesLike,
 } from "./combat";
 import { BOSS_KEY_ITEM_ID, getBossPhaseNumber, isBossUnlocked } from "./progression";
+import { getFaseDef, inimigosDaFaseCount } from "./phases";
 
 function randInt(max: number) {
   return Math.floor(Math.random() * max);
@@ -302,7 +303,12 @@ async function resolver({ supabase, userId }: SupabaseCtx) {
     },
     criatura,
     combatente: jogador,
-    inimigos: pool.length ? (isBossSelection ? bossDaFase(region, fase, pool) : inimigosDaFase(region, fase, pool)) : [],
+    inimigos: pool.length
+      ? (fase === bossPhaseNumber
+          ? bossDaFase(region, fase, pool)
+          : inimigosDaFase(region, fase, pool, getFaseDef(region.id, fase, poolIds, fasesTotal)))
+      : [],
+    faseDef: getFaseDef(region.id, fase, poolIds, fasesTotal),
     inventario: catalogo.map((i) => ({ item_id: i.id, quantidade: inventario.get(i.id) ?? 0 })),
     pending: pendingAtual ? { ...pendingAtual, species: pendingSpecies } : null,
     resumo: {

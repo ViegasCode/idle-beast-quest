@@ -9,7 +9,7 @@ import { GameNav } from "@/components/GameNav";
 import { Button } from "@/components/ui/button";
 import { changeRegion, coletarResumo, getCombatState, listCollection, setActiveCreature, setAutoCaptura, setRepeatPhase, setSelectedPhase, tentarCaptura } from "@/lib/game.functions";
 import { formatDuration } from "@/lib/game";
-import { CAP_HORAS, INIMIGOS_POR_FASE, type Combatente, type Inimigo } from "@/lib/combat";
+import { CAP_HORAS, type Combatente, type Inimigo } from "@/lib/combat";
 import { BOSS_KEY_ITEM_ID, getBossPhaseNumber } from "@/lib/progression";
 
 export const Route = createFileRoute("/_authenticated/cacando")({
@@ -52,6 +52,7 @@ function Combate() {
   const inventario = state?.inventario ?? [];
   const catalogo = state?.catalogo ?? [];
   const pending = state?.pending as any;
+  const faseDef = state?.faseDef as { nome: string; inimigos: number; dropMult: number; taxaCaptura: number } | undefined;
 
   const [teamIds, setTeamIds] = useState<string[]>([]);
   useEffect(() => {
@@ -145,8 +146,8 @@ function Combate() {
           <section className="battle-column">
             <div className="panel-heading battle-heading">
               <span><Swords /> {regiao?.nome}</span>
-              <Button variant="ghost" onClick={() => setShowPhases((value) => !value)} className="phase-button">FASE {session.fase}/{phaseTotal} <ChevronRight /></Button>
-              <div className="phase-progress"><span style={{ width: `${((session.fase_kills ?? 0) / INIMIGOS_POR_FASE) * 100}%` }} /></div>
+               <Button variant="ghost" onClick={() => setShowPhases((value) => !value)} className="phase-button">FASE {session.fase}/{phaseTotal} · {faseDef?.nome ?? "Expedição"} <ChevronRight /></Button>
+               <div className="phase-progress"><span style={{ width: `${((session.fase_kills ?? 0) / Math.max(1, faseDef?.inimigos ?? 5)) * 100}%` }} /></div>
             </div>
             {showPhases && <div className="phase-picker">
               {phases.map((phase) => { const isBoss = phase === bossPhase; const disabled = isBoss && !hasBossKey; return <Button size="sm" variant={phase === session.fase ? "default" : "outline"} disabled={disabled} key={phase} onClick={() => phaseMutation.mutate(phase)}>{isBoss ? "CHEFE" : phase}</Button>; })}
@@ -178,12 +179,12 @@ function Combate() {
               {pending && pendingLeft > 0 ? <><div className="capture-portrait">{pending.species?.sprite_url ? <img src={pending.species.sprite_url} alt={pending.species.nome} /> : <Crosshair />}</div><div className="capture-data"><b>{pending.species?.nome ?? "Criatura"}</b><span>Nv. {pending.nivel}</span><small>CRIATURA CAPTURÁVEL</small></div></> : <div className="capture-empty"><Crosshair /><b>Nenhum alvo disponível</b><span>Derrote inimigos capturáveis</span></div>}
             </section>
             <div className="capture-items">
-              {catalogo.map((item: any) => { const quantity = inventario.find((entry: any) => entry.item_id === item.id)?.quantidade ?? 0; return <Button variant="ghost" key={item.id} disabled={!pending || pendingLeft <= 0 || quantity === 0 || captureMutation.isPending} onClick={() => captureMutation.mutate(item.id)} className="capture-item"><span className="capture-orb" style={{ backgroundColor: item.cor }}><span /></span><b>{item.nome.replace("Bola ", "")}</b><small>×{quantity}</small><em>{Math.round(Number(item.taxa_sucesso) * 100)}%</em></Button>; })}
+               {catalogo.map((item: any) => { const quantity = inventario.find((entry: any) => entry.item_id === item.id)?.quantidade ?? 0; const chance = Math.min(.95, Number(item.taxa_sucesso) * Number(faseDef?.taxaCaptura ?? 0)); return <Button variant="ghost" key={item.id} disabled={!pending || pendingLeft <= 0 || quantity === 0 || captureMutation.isPending} onClick={() => captureMutation.mutate(item.id)} className="capture-item"><span className="capture-orb" style={{ backgroundColor: item.cor }}><span /></span><b>{item.nome.replace("Bola ", "")}</b><small>×{quantity}</small><em>{Math.round(chance * 100)}%</em></Button>; })}
             </div>
             <Button className="capture-cta" disabled={!pending || pendingLeft <= 0 || totalItens === 0 || captureMutation.isPending} onClick={() => captureMutation.mutate(undefined)}><Crosshair /> {totalItens === 0 ? "SEM ESFERAS" : "CAPTURAR"}</Button>
 
             <div className="side-tabs"><span><PackageOpen /> INVENTÁRIO</span><span><Settings2 /> AJUSTES</span></div>
-            <div className="inventory-grid">{catalogo.map((item: any) => { const quantity = inventario.find((entry: any) => entry.item_id === item.id)?.quantidade ?? 0; return <div key={item.id}><span className="capture-orb small" style={{ backgroundColor: item.cor }}><span /></span><b>×{quantity}</b><small>{Math.round(Number(item.chance_drop) * 100)}% drop</small></div>; })}</div>
+             <div className="inventory-grid">{catalogo.map((item: any) => { const quantity = inventario.find((entry: any) => entry.item_id === item.id)?.quantidade ?? 0; const drop = Math.min(.95, Number(item.chance_drop) * Number(faseDef?.dropMult ?? 1)); return <div key={item.id}><span className="capture-orb small" style={{ backgroundColor: item.cor }}><span /></span><b>×{quantity}</b><small>{Math.round(drop * 100)}% drop</small></div>; })}</div>
             <label className="auto-capture-setting"><input type="checkbox" checked={Boolean(state?.profile?.auto_captura)} onChange={(event) => autoMutation.mutate(event.target.checked)} /><span><b>CAPTURA AUTOMÁTICA</b><small>Usa a melhor esfera disponível</small></span><Zap /></label>
             <Button variant="outline" className="summary-button" onClick={() => summaryMutation.mutate()} disabled={summaryMutation.isPending}><Trophy /> Coletar resumo</Button>
             <p className="offline-note">Progresso offline ativo · limite de {CAP_HORAS}h</p>

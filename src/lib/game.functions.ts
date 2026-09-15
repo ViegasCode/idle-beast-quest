@@ -628,13 +628,13 @@ export const setActiveCreature = createServerFn({ method: "POST" })
 export const saveTeamFormation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { creature_ids: string[] }) => ({
-    creature_ids: Array.isArray(data.creature_ids)
-      ? [...new Set(data.creature_ids.map(String))].slice(0, 3)
-      : [],
+    creature_ids: Array.isArray(data.creature_ids) ? data.creature_ids.map(String) : [],
   }))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as SupabaseCtx;
     if (data.creature_ids.length === 0) throw new Error("O time precisa ter pelo menos uma criatura.");
+    if (data.creature_ids.length > 3) throw new Error("O time pode ter no máximo três criaturas.");
+    if (new Set(data.creature_ids).size !== data.creature_ids.length) throw new Error("A mesma criatura não pode ocupar duas vagas.");
 
     const { data: owned, error: ownedError } = await supabase
       .from("creatures")

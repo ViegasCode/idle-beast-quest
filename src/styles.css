@@ -355,3 +355,15 @@
   @media (max-width: 980px) { .formation-grid { grid-template-columns: 1fr; } }
   @media (max-width: 760px) { .starter-grid { grid-template-columns: 1fr; } .collection-grid { grid-template-columns: 1fr; } .formation-heading { align-items: stretch; flex-direction: column; } .formation-save { width: 100%; } }
 }
+
+/* Functional farm view; Lovable can polish these without altering simulation. */
+.farm-arena {position:relative; height:340px; background-size:cover; background-position:center; overflow:hidden;}
+.farm-arena-label {position:absolute; top:10px; left:12px; font-size:11px; z-index:2;}
+.farm-fighter {position:absolute; width:85px; transform:translateX(-50%); transition:left 1.8s linear; text-align:center;}
+.farm-fighter small {display:block; font-size:9px; text-shadow:1px 1px #000;}
+.farm-fighter img {width:46px; height:46px; margin:auto; image-rendering:pixelated;}
+.farm-event-log {position:absolute; bottom:5px; right:10px; font-size:10px; display:grid; text-shadow:1px 1px #000;}
+.farm-defeat {position:absolute; top:45%; left:20%; background:#222d; padding:12px;}
+.farm-skills {grid-column:1/-1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; font-size:9px; padding:5px;}
+.farm-skills span {border:1px solid #ffffff30; padding:4px;}
+.farm-skills small {display:block;}

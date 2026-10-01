@@ -9,6 +9,9 @@ export type FarmSkill = {
   area: boolean;
   damage: number;
   readyAt: number;
+  name?: string;
+  type?: string;
+  power?: number;
 };
 export type FarmUnit = {
   id: string;
@@ -16,10 +19,19 @@ export type FarmUnit = {
   hp: number;
   maxHp: number;
   skills: FarmSkill[];
+  name?: string;
+  sprite?: string | null;
+  speciesId?: number;
+  level?: number;
+  attack?: number;
+  defense?: number;
+  types?: (string | null)[];
 };
 export type FarmEnemy = FarmUnit & { speed: number };
 export type FarmState = {
   phaseId: string;
+  epoch?: number;
+  reserves?: Record<string, FarmUnit>;
   timeMs: number;
   remainderMs: number;
   kills: number;
@@ -31,7 +43,7 @@ export type FarmState = {
 };
 export type FarmEvent = {
   timeMs: number;
-  type: "wave" | "skill" | "death" | "defeat";
+  type: "wave" | "skill" | "hit" | "death" | "defeat";
   actorId: string;
   targetIds: string[];
   skillId?: string;
@@ -110,12 +122,27 @@ export function changeFarmPhase(state: FarmState, phaseId: string): FarmState {
  * Enemy factory must be deterministic from wave/index, without Date.now or Math.random.
  * Dead teams stop the session; recovery and rewards are handled by the integration layer.
  */
-export function advanceFarm(input: FarmState, elapsedMs: number, makeEnemy: EnemyFactory) {
+export type FarmOptions = {
+  eventLimit?: number;
+  damageFor?: (actor: FarmUnit, target: FarmUnit, skill: FarmSkill, state: FarmState) => number;
+  onEnemyDeath?: (enemy: FarmEnemy, state: FarmState) => void;
+  onWaveComplete?: (state: FarmState) => void;
+};
+export function advanceFarm(
+  input: FarmState,
+  elapsedMs: number,
+  makeEnemy: EnemyFactory,
+  options: FarmOptions = {},
+) {
   if (!Number.isFinite(elapsedMs) || elapsedMs < 0 || elapsedMs > 12 * 3600_000) {
     throw new Error("Invalid farm duration");
   }
   const state = structuredClone(input);
   const events: FarmEvent[] = [];
+  const emit = (event: FarmEvent) => {
+    events.push(event);
+    if (options.eventLimit !== undefined && events.length > options.eventLimit) events.shift();
+  };
   let budget = state.remainderMs + elapsedMs;
   while (budget >= FARM_TICK_MS && !state.defeated) {
     budget -= FARM_TICK_MS;
@@ -133,7 +160,7 @@ export function advanceFarm(input: FarmState, elapsedMs: number, makeEnemy: Enem
         });
         return enemy;
       });
-      events.push({
+      emit({
         timeMs: state.timeMs,
         type: "wave",
         actorId: "",
@@ -142,6 +169,7 @@ export function advanceFarm(input: FarmState, elapsedMs: number, makeEnemy: Enem
     }
     for (const enemy of state.enemies.filter((e) => e.hp > 0)) {
       const living = state.team.filter((u) => u.hp > 0);
+      if (!living.length) continue;
       const front = Math.max(...living.map((u) => u.x));
       enemy.x = Math.max(front, enemy.x - (enemy.speed * FARM_TICK_MS) / 1000);
     }
@@ -158,19 +186,30 @@ export function advanceFarm(input: FarmState, elapsedMs: number, makeEnemy: Enem
           continue;
         const hits = skill.area ? alive : inRange.slice(0, 1);
         skill.readyAt = state.timeMs + skill.cooldownMs;
-        events.push({
+        emit({
           timeMs: state.timeMs,
           type: "skill",
           actorId: actor.id,
           targetIds: hits.map((t) => t.id),
           skillId: skill.id,
-          damage: skill.damage,
         });
         for (const target of hits) {
-          target.hp = Math.max(0, target.hp - skill.damage);
+          const damage = options.damageFor?.(actor, target, skill, state) ?? skill.damage;
+          target.hp = Math.max(0, target.hp - damage);
+          emit({
+            timeMs: state.timeMs,
+            type: "hit",
+            actorId: actor.id,
+            targetIds: [target.id],
+            skillId: skill.id,
+            damage,
+          });
           if (target.hp === 0) {
-            if (allied) state.kills++;
-            events.push({ timeMs: state.timeMs, type: "death", actorId: target.id, targetIds: [] });
+            if (allied) {
+              state.kills++;
+              options.onEnemyDeath?.(target as FarmEnemy, state);
+            }
+            emit({ timeMs: state.timeMs, type: "death", actorId: target.id, targetIds: [] });
           }
         }
       }
@@ -180,9 +219,10 @@ export function advanceFarm(input: FarmState, elapsedMs: number, makeEnemy: Enem
     state.enemies.forEach((u) => attack(u, state.team, false));
     if (!state.team.some((u) => u.hp > 0)) {
       state.defeated = true;
-      events.push({ timeMs: state.timeMs, type: "defeat", actorId: "", targetIds: [] });
+      emit({ timeMs: state.timeMs, type: "defeat", actorId: "", targetIds: [] });
     }
     if (state.enemies.length && !state.enemies.some((e) => e.hp > 0)) {
+      options.onWaveComplete?.(state);
       state.enemies = [];
       state.nextWaveAt = state.timeMs + 1000;
     }

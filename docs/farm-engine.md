@@ -1,5 +1,7 @@
 # Farm engine — first implementation
 
+Integration update: the server adapter, transactional RPCs and functional FarmArena are now implemented. See [farm-rollout.md](farm-rollout.md) for current activation requirements and remaining gym/passive/minimum-enemy UI work. The checklist below describes the original foundation handoff.
+
 Confirmed rules: 1–3 selected creatures (three slots, starters can use one), fixed allied positions; enemies approach; four active slots per creature; independent cooldown and range; configurable minimum of 1–6 living enemies; at least one in range; area attacks hit all living enemies. Wave size is `min(6, 1 + floor(kills / 20))`, evaluated when spawning. Changing phase resets kills.
 
 `src/lib/farm.ts` is a pure serializable simulation, with a 100ms tick and preserved fractional time. Online and offline must call this same engine. Enemy creation must be deterministic by wave/index. Positions are abstract arena units, mapped to pixels by the view. The view animates events; it must not calculate rewards or run a competing random simulation.

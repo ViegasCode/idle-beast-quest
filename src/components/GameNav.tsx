@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
-export function GameNav({ treinador, total }: { treinador?: string; total?: number }) {
+export function GameNav({ treinador, total }: { treinador?: string | undefined; total?: number | undefined }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (state) => state.location.pathname });

@@ -1,5 +1,5 @@
-import { NATURES, RARITIES, RARITY_BASE_WEIGHTS, type Rarity } from "./game";
-import { getFaseDef, inimigosDaFaseCount, type FaseDef } from "./phases";
+import { NATURES, RARITIES, RARITY_BASE_WEIGHTS, type Rarity } from "./game.ts";
+import { getFaseDef, inimigosDaFaseCount, type FaseDef } from "./phases.ts";
 
 
 export const CAP_HORAS = 12;
